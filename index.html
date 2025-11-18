@@ -2,34 +2,24 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Calculator Ratio Fiber Optic Lengkap</title>
+    <title>Calculator Ratio Fiber Optic PRO</title>
 
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        body { background:#f2f2f2; }
-        .box {
-            background:white; padding:25px; border-radius:12px;
-            box-shadow:0 0 15px rgba(0,0,0,0.1);
-        }
-        .title {
-            font-weight:700; text-align:center;
-            margin-bottom:25px; font-size:26px;
-        }
-        .dark-mode {
-            background:#1c1c1c !important;
-            color:white !important;
-        }
-        .dark-mode .box {
-            background:#2b2b2b !important;
-            color:white;
-        }
-        .dark-mode input, .dark-mode select {
-            background:#444 !important;
-            color:white !important;
-            border-color:#666 !important;
-        }
+        body { background:#eef1f5; }
+        .box { background:white; padding:25px; border-radius:12px; box-shadow:0 3px 12px rgba(0,0,0,0.1); }
+        .title { font-weight:700; text-align:center; margin-bottom:25px; font-size:28px; }
+
+        /* Dark Mode */
+        .dark-mode { background:#181818 !important; color:white !important; }
+        .dark-mode .box { background:#242424 !important; color:white !important; }
+        .dark-mode input, .dark-mode select { background:#333 !important; color:white; border-color:#777; }
+        .dark-mode .card { background:#333 !important; color:white; }
+
+        /* Smooth fade */
+        .fade-in { animation: fadeIn .4s ease-in-out; }
+        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
     </style>
 </head>
 
@@ -37,56 +27,55 @@
 
 <div class="container mt-4 mb-4">
 
-    <button class="btn btn-dark mb-3" onclick="toggleDark()">🌙 Dark Mode</button>
+    <button class="btn btn-dark mb-3" onclick="toggleDark()">🌙 Mode Gelap</button>
 
-    <div class="box">
+    <div class="box fade-in">
 
-        <div class="title">Calculator Ratio Fiber Optic (Lengkap)</div>
+        <div class="title">📡 Calculator Ratio Fiber Optic – PRO Version</div>
 
         <div class="row g-3">
 
             <!-- POWER LASER -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label>Power Laser (dBm)</label>
-                <input id="power" type="number" class="form-control" placeholder="Contoh: -2">
+                <input id="power" type="number" class="form-control" placeholder="-2">
             </div>
 
             <!-- PANJANG KABEL -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label>Panjang Kabel (meter)</label>
                 <input id="panjangKabel" type="number" class="form-control">
             </div>
 
-            <div class="col-md-6">
-                <label>Loses Kabel (dB/km)</label>
-                <input id="lossKabel" type="number" class="form-control" value="0.25">
+            <div class="col-md-4">
+                <label>Loss Kabel (dB/km)</label>
+                <input id="lossKabel" value="0.25" type="number" class="form-control">
             </div>
 
-
             <!-- SPLICING -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label>Jumlah Splicing</label>
                 <input id="jumlahSplicing" type="number" class="form-control">
             </div>
 
-            <div class="col-md-6">
-                <label>Loses Splicing (dB)</label>
+            <div class="col-md-4">
+                <label>Loss Splicing (dB)</label>
                 <input id="lossSplicing" type="number" class="form-control" value="0.1">
             </div>
 
             <!-- KONEKTOR -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label>Jumlah Konektor</label>
                 <input id="jumlahKonektor" type="number" class="form-control">
             </div>
 
-            <div class="col-md-6">
-                <label>Loses Konektor (dB)</label>
+            <div class="col-md-4">
+                <label>Loss Konektor (dB)</label>
                 <input id="lossKonektor" type="number" class="form-control" value="0.2">
             </div>
 
             <!-- Tipe ODP -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label>Tipe ODP</label>
                 <select id="tipeODP" class="form-select" onchange="setODPValue()">
                     <option value="">Pilih ODP</option>
@@ -97,14 +86,14 @@
                 </select>
             </div>
 
-            <div class="col-md-6">
-                <label>Loses ODP (dB)</label>
-                <input id="lossODP" type="number" class="form-control" value="0">
+            <div class="col-md-4">
+                <label>Loss ODP (dB)</label>
+                <input id="lossODP" type="number" class="form-control">
             </div>
 
-            <!-- RASIO -->
+            <!-- Rasio Splitter -->
             <div class="col-md-6">
-                <label>Pilih Rasio Splitter</label>
+                <label>Rasio Splitter</label>
                 <select id="rasio" class="form-select" onchange="updateRasio()">
                     <option value="">Pilih Rasio</option>
                     <option value="2">1 : 2</option>
@@ -113,21 +102,21 @@
                     <option value="16">1 : 16</option>
                     <option value="32">1 : 32</option>
                     <option value="64">1 : 64</option>
+                    <option value="128">1 : 128</option>
                 </select>
             </div>
 
             <div class="col-md-3">
                 <label>Rasio Kecil (%)</label>
-                <input id="rasioKecil" class="form-control" type="number" readonly>
+                <input id="rasioKecil" class="form-control" readonly>
             </div>
 
             <div class="col-md-3">
                 <label>Rasio Besar (%)</label>
-                <input id="rasioBesar" class="form-control" type="number" readonly>
+                <input id="rasioBesar" class="form-control" readonly>
             </div>
 
-            <!-- TOLERANSI -->
-            <div class="col-md-6">
+            <div class="col-md-12">
                 <label>Toleransi (dB)</label>
                 <input id="toleransi" type="number" class="form-control" value="0.5">
             </div>
@@ -138,98 +127,141 @@
         <div class="d-flex mt-4 gap-2">
             <button class="btn btn-primary flex-fill" onclick="hitung()">Hitung</button>
             <button class="btn btn-danger flex-fill" onclick="resetForm()">Reset</button>
+            <button class="btn btn-success flex-fill" onclick="exportPDF()">Download PDF</button>
         </div>
 
         <!-- HASIL -->
-        <div class="row mt-4">
-            <div class="col-md-6">
+        <div id="hasilContainer" class="row mt-4 fade-in" style="display:none;">
+
+            <div class="col-md-4">
                 <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">Redaman ODP</div>
-                    <div class="card-body">
-                        <h3 id="hasilODP">0 dB</h3>
-                    </div>
+                    <div class="card-header bg-primary text-white">Total Redaman ODP</div>
+                    <div class="card-body"><h3 id="hasilODP">0 dB</h3></div>
                 </div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card border-warning">
-                    <div class="card-header bg-warning">Output Power Terusan</div>
-                    <div class="card-body">
-                        <h3 id="hasilTerusan">0 dB</h3>
-                    </div>
+                    <div class="card-header bg-warning">Total Redaman Link</div>
+                    <div class="card-body"><h3 id="hasilLink">0 dB</h3></div>
                 </div>
             </div>
+
+            <div class="col-md-4">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">Output Power</div>
+                    <div class="card-body"><h3 id="hasilTerusan">0 dBm</h3></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tabel Detail -->
+        <div id="detailContainer" class="mt-4 fade-in" style="display:none;">
+            <h5>Detail Perhitungan</h5>
+            <table class="table table-bordered table-striped">
+                <tbody id="tabelDetail"></tbody>
+            </table>
         </div>
 
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-function toggleDark() {
-    document.body.classList.toggle("dark-mode");
-}
+
+// Dark Mode
+function toggleDark() { document.body.classList.toggle("dark-mode"); }
 
 function setODPValue() {
-    document.getElementById("lossODP").value =
-        document.getElementById("tipeODP").value || 0;
+    document.getElementById("lossODP").value = document.getElementById("tipeODP").value || 0;
 }
 
 function updateRasio() {
     let r = document.getElementById("rasio").value;
     if (!r) return;
 
-    // otomatis hitung distribusi pembagian kecil & besar
-    let small = (100 / r);
+    let small = 100 / r;
     let big = 100 - small;
 
-    document.getElementById("rasioKecil").value = small.toFixed(2);
-    document.getElementById("rasioBesar").value = big.toFixed(2);
+    rasioKecil.value = small.toFixed(2);
+    rasioBesar.value = big.toFixed(2);
 }
 
 function hitung() {
 
+    // ambil input
     let power = parseFloat(power.value);
-    let panjangKabel = parseFloat(document.getElementById("panjangKabel").value);
-    let lossKabel = parseFloat(document.getElementById("lossKabel").value);
-    let spliceCount = parseFloat(document.getElementById("jumlahSplicing").value);
-    let lossSplice = parseFloat(document.getElementById("lossSplicing").value);
-    let konektorCount = parseFloat(document.getElementById("jumlahKonektor").value);
-    let lossKonektor = parseFloat(document.getElementById("lossKonektor").value);
-    let lossODP = parseFloat(document.getElementById("lossODP").value);
-    let toleransi = parseFloat(document.getElementById("toleransi").value);
+    let panjang = parseFloat(panjangKabel.value) || 0;
+    let lossKabel = parseFloat(lossKabelInput.value || lossKabel.value);
 
-    let rasioKecil = parseFloat(document.getElementById("rasioKecil").value);
-    let rasioBesar = parseFloat(document.getElementById("rasioBesar").value);
+    let splice = parseFloat(jumlahSplicing.value || 0);
+    let lossSplice = parseFloat(lossSplicing.value || 0);
 
-    // VALIDASI
+    let konektor = parseFloat(jumlahKonektor.value || 0);
+    let lossKonektorVal = parseFloat(lossKonektor.value || 0);
+
+    let lossODP = parseFloat(document.getElementById("lossODP").value || 0);
+    let toleransi = parseFloat(document.getElementById("toleransi").value || 0);
+
+    let rk = parseFloat(rasioKecil.value);
+    let rb = parseFloat(rasioBesar.value);
+
     if (isNaN(power)) return alert("Power Laser belum diisi!");
-    if (!panjangKabel) panjangKabel = 0;
 
-    // Perhitungan Redaman
-    let totalLossKabel = (panjangKabel / 1000) * lossKabel;
-    let totalSplice = spliceCount * lossSplice;
-    let totalKonek = konektorCount * lossKonektor;
+    // perhitungan
+    let totalKabel = (panjang/1000) * lossKabel;
+    let totalSplice = splice * lossSplice;
+    let totalKonektor = konektor * lossKonektorVal;
+    let totalRasio = 10 * Math.log10(rb / rk);
 
-    // Rasio splitter
-    let lossRasio = 10 * Math.log10(rasioBesar / rasioKecil);
+    let totalODP = totalSplice + totalKonektor + lossODP + totalRasio;
+    let totalLink = totalKabel + totalODP;
 
-    // Total redaman
-    let totalODP = totalLossKabel + totalSplice + totalKonek + lossODP + lossRasio;
+    let output = power - totalLink - toleransi;
 
-    let terusan = power - totalODP - toleransi;
+    // tampilkan
+    hasilContainer.style.display = "flex";
+    detailContainer.style.display = "block";
 
-    document.getElementById("hasilODP").innerText = totalODP.toFixed(3) + " dB";
-    document.getElementById("hasilTerusan").innerText = terusan.toFixed(3) + " dB";
+    hasilODP.innerText = totalODP.toFixed(3) + " dB";
+    hasilLink.innerText = totalLink.toFixed(3) + " dB";
+    hasilTerusan.innerText = output.toFixed(3) + " dBm";
+
+    // Tabel detail
+    tabelDetail.innerHTML = `
+        <tr><td>Panjang Kabel</td><td>${panjang} meter</td></tr>
+        <tr><td>Total Loss Kabel</td><td>${totalKabel.toFixed(3)} dB</td></tr>
+        <tr><td>Total Splicing</td><td>${totalSplice.toFixed(3)} dB</td></tr>
+        <tr><td>Total Konektor</td><td>${totalKonektor.toFixed(3)} dB</td></tr>
+        <tr><td>Loss ODP</td><td>${lossODP} dB</td></tr>
+        <tr><td>Loss Rasio Splitter</td><td>${totalRasio.toFixed(3)} dB</td></tr>
+        <tr><td>Toleransi</td><td>${toleransi} dB</td></tr>
+    `;
+
+    window.scrollTo({ top: 1000, behavior: 'smooth' });
 }
 
 function resetForm() {
     document.querySelectorAll("input").forEach(i => i.value = "");
-    document.getElementById("hasilODP").innerText = "0 dB";
-    document.getElementById("hasilTerusan").innerText = "0 dB";
-    document.getElementById("tipeODP").value = "";
-    document.getElementById("rasio").value = "";
+    document.querySelectorAll("select").forEach(s => s.value = "");
+    hasilContainer.style.display = "none";
+    detailContainer.style.display = "none";
 }
+
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    pdf.text("Hasil Perhitungan Fiber Optic", 20, 20);
+    pdf.text("Total Redaman ODP: " + hasilODP.innerText, 20, 40);
+    pdf.text("Total Redaman Link: " + hasilLink.innerText, 20, 50);
+    pdf.text("Output Power: " + hasilTerusan.innerText, 20, 60);
+
+    pdf.save("hasil_fiber_optic.pdf");
+}
+
 </script>
 
 </body>
