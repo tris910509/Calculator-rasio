@@ -1,498 +1,231 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NMS Dashboard — Prototype (Complete)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ISP / Network Monitoring Dashboard (Prototype)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body {background:#f5f7fb}
-    .card-compact {padding: .6rem}
-    .topology {background:#fff;border-radius:10px;padding:10px;height:320px;overflow:auto}
-    .device-dot {width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:6px}
-    .dot-online{background:#28a745}
-    .dot-offline{background:#dc3545}
-    .sidebar {min-width:260px}
-    .chart-wrap{height:180px}
-    pre {white-space:pre-wrap}
-    .badge-role-admin{background:#0d6efd;color:#fff}
-    .badge-role-noc{background:#20c997;color:#fff}
-    .badge-role-view{background:#6c757d;color:#fff}
+    body { background:#f6f8fb; }
+    .card { border-radius:12px; }
+    .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:8px; }
+    .up { background:#28a745; }
+    .down { background:#dc3545; }
+    pre { white-space:pre-wrap; }
   </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#"><i class="fa-solid fa-network-wired"></i> NMS Prototype</a>
-    <div class="d-flex align-items-center">
-      <div id="currentUser" class="text-white-50 small me-3"></div>
-      <button id="loginBtn" class="btn btn-outline-light btn-sm me-2">Login</button>
-      <button id="logoutBtn" class="btn btn-outline-light btn-sm me-2 d-none">Logout</button>
-      <button id="refreshNow" class="btn btn-outline-light btn-sm">Refresh</button>
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="#">Network Control & Monitoring</a>
+      <div class="d-flex">
+        <button id="btnExport" class="btn btn-outline-primary me-2">Export CSV</button>
+        <button id="btnSimulateFail" class="btn btn-outline-danger">Simulate Fail</button>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
-<div class="container-fluid mt-3">
-  <div class="row">
-    <!-- Sidebar -->
-    <div class="col-lg-3 mb-3">
-      <div class="card sidebar shadow-sm">
-        <div class="card-body">
-          <h6>Summary</h6>
-          <div class="row text-center">
-            <div class="col-6">
-              <div class="h2" id="onlineCount">0</div>
-              <div class="small">Online Devices</div>
-            </div>
-            <div class="col-6">
-              <div class="h2" id="offlineCount">0</div>
-              <div class="small">Offline Devices</div>
-            </div>
-          </div>
-
+  <div class="container">
+    <div class="row g-3">
+      <div class="col-12 col-xl-4">
+        <div class="card p-3 shadow-sm">
+          <h6>QoS Mini Panel</h6>
+          <div class="mb-2">Latency: <span id="latency">—</span> ms</div>
+          <div class="mb-2">Jitter: <span id="jitter">—</span> ms</div>
+          <div class="mb-2">Packet Loss: <span id="ploss">—</span> %</div>
           <hr>
-          <h6>Quick Ops</h6>
-          <div class="d-grid gap-2">
-            <button class="btn btn-sm btn-primary" id="openAddDevice">Add Device</button>
-            <button class="btn btn-sm btn-outline-secondary" id="backupConfigs">Backup All Configs</button>
-            <button class="btn btn-sm btn-outline-warning" id="exportCSV">Export CSV</button>
-            <button class="btn btn-sm btn-outline-danger" id="clearStorage">Reset Demo</button>
-          </div>
-
+          <h6>OLT / ONU Ratio</h6>
+          <div>OLT: <span id="oltCount">0</span></div>
+          <div>ONU: <span id="onuCount">0</span></div>
+          <div>Ratio (OLT:ONU) <strong id="ratio">0:0</strong></div>
           <hr>
-          <h6>Alarms</h6>
-          <ul class="list-group list-group-flush" id="alarmList" style="max-height:200px;overflow:auto"></ul>
-
-          <hr>
-          <h6>Navigation</h6>
-          <div class="list-group">
-            <a href="#" class="list-group-item list-group-item-action active" id="nav-dashboard">Dashboard</a>
-            <a href="#" class="list-group-item list-group-item-action" id="nav-tickets">Tickets</a>
-            <a href="#" class="list-group-item list-group-item-action" id="nav-reports">Reports</a>
-            <a href="#" class="list-group-item list-group-item-action" id="nav-settings">Settings</a>
-          </div>
+          <h6>Quick Alerts</h6>
+          <ul id="alerts" class="list-group list-group-flush small"></ul>
         </div>
       </div>
 
-      <div class="mt-3 text-center small text-muted">
-        Prototype — localStorage demo • Role-based demo (Admin / NOC / Viewer)
-      </div>
-    </div>
-
-    <!-- Main -->
-    <div class="col-lg-9">
-      <div id="pageContent">
-        <!-- Dashboard page (default) -->
-        <div id="page-dashboard">
-          <div class="row g-3">
-            <div class="col-md-12">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Network Map & Topology</h5>
-                    <small class="text-muted">Auto-discovery demo (simulated)</small>
-                  </div>
-                  <div class="row mt-3">
-                    <div class="col-md-8">
-                      <div class="topology" id="topologyArea">
-                        <svg width="100%" height="280" id="topoSVG"></svg>
-                      </div>
-                    </div>
-                    <div class="col-md-4">
-                      <div class="card-compact">
-                        <h6>Device List</h6>
-                        <div id="deviceTable" style="max-height:260px;overflow:auto"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <h6>QoS Panel (Latency & Packet Loss)</h6>
-                  <div class="chart-wrap"><canvas id="qosChart"></canvas></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <h6>Performance (CPU / RAM)</h6>
-                  <div class="chart-wrap"><canvas id="perfChart"></canvas></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-md-12">
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <h6>OLT Control Panel (PON)</h6>
-                  <div class="row">
-                    <div class="col-md-4">
-                      <div class="small text-muted">OLT Summary</div>
-                      <div class="mt-2">
-                        <div>OLT Name: <strong id="oltName">-</strong></div>
-                        <div>Active ONUs: <strong id="onuCount">0</strong></div>
-                        <div>Avg Rx Power: <strong id="avgRx">-</strong> dBm</div>
-                      </div>
-                    </div>
-                    <div class="col-md-8">
-                      <div id="onuTable" style="max-height:160px;overflow:auto"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+      <div class="col-12 col-xl-8">
+        <div class="card p-3 shadow-sm mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6>Traffic (simulasi realtime)</h6>
+            <small class="text-muted">updates setiap 3s</small>
           </div>
+          <canvas id="trafficChart" height="120"></canvas>
         </div>
 
-        <!-- Tickets page -->
-        <div id="page-tickets" class="d-none">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Tickets & Incidents</h5>
-                <button class="btn btn-sm btn-primary" id="openNewTicket">New Ticket</button>
-              </div>
-              <div class="mt-3" id="ticketList"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Reports page -->
-        <div id="page-reports" class="d-none">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5>Reports & SLA</h5>
-              <div class="row">
-                <div class="col-md-4">
-                  <div class="mb-2">Date range</div>
-                  <input type="date" id="r_from" class="form-control mb-2" />
-                  <input type="date" id="r_to" class="form-control mb-2" />
-                  <button class="btn btn-sm btn-primary" id="genReport">Generate</button>
-                </div>
-                <div class="col-md-8">
-                  <div id="reportOutput"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Settings page -->
-        <div id="page-settings" class="d-none">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5>Settings</h5>
-              <div class="mb-2">Users (demo)</div>
-              <div id="userList"></div>
-            </div>
+        <div class="card p-3 shadow-sm">
+          <h6>Device Inventory / Monitor</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" id="deviceTable">
+              <thead class="table-light small">
+                <tr>
+                  <th>Nama</th>
+                  <th>Tipe</th>
+                  <th>IP</th>
+                  <th>Status</th>
+                  <th>Latency</th>
+                  <th>Jitter</th>
+                  <th>Packet Loss</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
 
       </div>
+
+      <div class="col-12">
+        <div class="card p-3 shadow-sm">
+          <h6>Event Log</h6>
+          <pre id="logArea" style="height:160px;overflow:auto;background:#fff;padding:12px;border-radius:8px"></pre>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
-
-<!-- Modals -->
-<!-- Add Device Modal -->
-<div class="modal fade" id="deviceModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add / Edit Device</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="deviceForm">
-          <div class="mb-2">
-            <label class="form-label">Name</label>
-            <input class="form-control" id="dev_name" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">IP</label>
-            <input class="form-control" id="dev_ip" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Type</label>
-            <select class="form-select" id="dev_type">
-              <option value="router">Router</option>
-              <option value="switch">Switch</option>
-              <option value="olt">OLT</option>
-              <option value="ap">Access Point</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Vendor</label>
-            <input class="form-control" id="dev_vendor">
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Location</label>
-            <input class="form-control" id="dev_location">
-          </div>
-          <input type="hidden" id="dev_id">
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" id="saveDevice">Save</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Ticket Modal -->
-<div class="modal fade" id="ticketModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">New Ticket</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <form id="ticketForm">
-          <div class="mb-2"><label class="form-label">Title</label><input id="tk_title" class="form-control" required></div>
-          <div class="mb-2"><label class="form-label">Device</label><select id="tk_device" class="form-select"></select></div>
-          <div class="mb-2"><label class="form-label">Priority</label><select id="tk_priority" class="form-select"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-          <div class="mb-2"><label class="form-label">Description</label><textarea id="tk_desc" class="form-control"></textarea></div>
-        </form>
-      </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="saveTicket">Create</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- Login Modal -->
-<div class="modal fade" id="loginModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Login (demo)</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <form id="loginForm">
-          <div class="mb-2"><label class="form-label">Username</label><input id="lg_user" class="form-control"></div>
-          <div class="mb-2"><label class="form-label">Password</label><input id="lg_pass" type="password" class="form-control"></div>
-        </form>
-        <div class="small text-muted mt-2">Demo accounts: admin/admin, noc/noc, viewer/view</div>
-      </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="doLogin">Login</button></div>
-    </div>
-  </div>
-</div>
 
 <script>
-// Enhanced prototype: devices, tickets, users, role-based demo
-const DEV_KEY = 'nms_demo_devices_v2';
-const TICKET_KEY = 'nms_demo_tickets_v1';
-const USER_KEY = 'nms_demo_users_v1';
-
-const sampleDevices = [
-  {id:1,name:'Core-RTR-01',ip:'10.0.0.1',type:'router',vendor:'Cisco',location:'DC-1',status:'online',cpu:12,ram:45,latency:2,packet_loss:0},
-  {id:2,name:'Switch-Edge-02',ip:'10.0.1.2',type:'switch',vendor:'HPE',location:'Floor-2',status:'online',cpu:22,ram:60,latency:5,packet_loss:0},
-  {id:3,name:'OLT-01',ip:'10.0.2.1',type:'olt',vendor:'Huawei',location:'POP-1',status:'online',cpu:18,ram:55,latency:10,packet_loss:0.1},
-  {id:4,name:'AP-Store-03',ip:'10.0.3.3',type:'ap',vendor:'Ubiquiti',location:'Store-3',status:'offline',cpu:0,ram:0,latency:0,packet_loss:0}
+// --- CONFIG START ---
+const UPDATE_INTERVAL = 3000; // ms
+// Example device list (in production: fetch from backend / DB / SNMP discovery)
+let devices = [
+  { id:1, name:'OLT-1', type:'OLT', ip:'10.0.0.1' },
+  { id:2, name:'BR-OLT-2', type:'OLT', ip:'10.0.0.2' },
+  { id:3, name:'ONU-101', type:'ONU', ip:'10.0.10.101' },
+  { id:4, name:'ONU-102', type:'ONU', ip:'10.0.10.102' },
+  { id:5, name:'Router-CORE', type:'Router', ip:'192.168.1.1' },
+  { id:6, name:'AP-01', type:'Access Point', ip:'192.168.1.10' }
 ];
+// --- CONFIG END ---
 
-const sampleUsers = [
-  {id:1,username:'admin',password:'admin',role:'admin',name:'Administrator'},
-  {id:2,username:'noc',password:'noc',role:'noc',name:'NOC Operator'},
-  {id:3,username:'viewer',password:'view',role:'viewer',name:'Viewer'}
-];
+// State
+const state = { traffic: [], alerts: [], logs: [] };
 
-function load(key, fallback){ const raw=localStorage.getItem(key); if(!raw){ localStorage.setItem(key, JSON.stringify(fallback)); return fallback.slice();} try{return JSON.parse(raw)}catch(e){localStorage.removeItem(key); localStorage.setItem(key, JSON.stringify(fallback)); return fallback.slice();}}
-function save(key,data){ localStorage.setItem(key, JSON.stringify(data)); }
+// Utilities
+function rand(min, max){ return Math.random()*(max-min)+min }
+function now() { return new Date().toLocaleString(); }
+function pushLog(text){ state.logs.unshift(`[${now()}] ${text}`); if(state.logs.length>200) state.logs.pop(); renderLogs(); }
 
-let devices = load(DEV_KEY, sampleDevices);
-let tickets = load(TICKET_KEY, []);
-let users = load(USER_KEY, sampleUsers);
-let currentUser = null;
-let alarms = [];
+// Render functions
+function renderDeviceTable(){
+  const tbody = document.querySelector('#deviceTable tbody'); tbody.innerHTML='';
+  devices.forEach(d=>{
+    const tr = document.createElement('tr');
+    const status = d._up === false ? 'down' : 'up';
+    tr.innerHTML = `
+      <td>
+        <span class="status-dot ${status==='up'?'up':'down'}"></span>
+        <strong>${d.name}</strong>
+      </td>
+      <td>${d.type}</td>
+      <td>${d.ip}</td>
+      <td>${status==='up'?'<span class="badge bg-success">UP</span>':'<span class="badge bg-danger">DOWN</span>'}</td>
+      <td>${(d.latency||'-').toFixed?d.latency.toFixed(1): (d.latency||'-')}</td>
+      <td>${(d.jitter||'-').toFixed?d.jitter.toFixed(1): (d.jitter||'-')}</td>
+      <td>${(d.ploss||'-').toFixed?d.ploss.toFixed(2): (d.ploss||'-')}</td>
+      <td><button class="btn btn-sm btn-outline-secondary" onclick="showDetails(${d.id})">Detail</button></td>
+    `;
+    tbody.appendChild(tr);
+  })
+}
 
-// Auth helpers
-function setCurrentUser(u){ currentUser = u; if(u){ document.getElementById('currentUser').innerHTML = `<span class='me-2'>${u.name}</span> <span class='badge ${u.role==='admin'?'badge-role-admin':u.role==='noc'?'badge-role-noc':'badge-role-view'}'>${u.role.toUpperCase()}</span>`; document.getElementById('loginBtn').classList.add('d-none'); document.getElementById('logoutBtn').classList.remove('d-none'); } else { document.getElementById('currentUser').innerText='Not logged in'; document.getElementById('loginBtn').classList.remove('d-none'); document.getElementById('logoutBtn').classList.add('d-none'); }}
+function renderLogs(){ document.getElementById('logArea').textContent = state.logs.join('\n'); }
+function renderAlerts(){
+  const ul = document.getElementById('alerts'); ul.innerHTML='';
+  state.alerts.slice(0,6).forEach(a=>{
+    const li = document.createElement('li'); li.className='list-group-item small'; li.textContent = a; ul.appendChild(li);
+  })
+}
 
-// Initial auth state
-setCurrentUser(null);
+// Traffic Chart
+const ctx = document.getElementById('trafficChart');
+const trafficChart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label:'Mbps', data:[], tension:0.4, fill:true, pointRadius:0 }] },
+  options: { responsive:true, scales:{ x:{ display:false } }, plugins:{ legend:{ display:false } } }
+});
 
-// Navigation
-function showPage(id){ document.querySelectorAll('#pageContent > div').forEach(el=>el.classList.add('d-none')); document.getElementById(id).classList.remove('d-none'); }
+function updateTrafficChart(value){
+  const data = trafficChart.data;
+  data.labels.push(''); data.datasets[0].data.push(value);
+  if(data.labels.length>30){ data.labels.shift(); data.datasets[0].data.shift(); }
+  trafficChart.update('none');
+}
 
-document.getElementById('nav-dashboard').addEventListener('click',()=>{ showPage('page-dashboard'); });
-document.getElementById('nav-tickets').addEventListener('click',()=>{ showPage('page-tickets'); renderTickets(); });
-document.getElementById('nav-reports').addEventListener('click',()=>{ showPage('page-reports'); });
-document.getElementById('nav-settings').addEventListener('click',()=>{ showPage('page-settings'); renderUsers(); });
+// Details
+function showDetails(id){
+  const d = devices.find(x=>x.id===id);
+  Swal.fire({ title: d.name, html: `IP: <b>${d.ip}</b><br>Type: <b>${d.type}</b><br>Status: <b>${d._up? 'UP':'DOWN'}</b><br>Latency: <b>${d.latency?d.latency.toFixed(2)+' ms':'-'}</b><br>Jitter: <b>${d.jitter?d.jitter.toFixed(2)+' ms':'-'}</b><br>Packet Loss: <b>${d.ploss?d.ploss.toFixed(2)+'%':'-'}</b>`, width:600 });
+}
 
-// UI renders
-function renderSummary(){ const online = devices.filter(d=>d.status==='online').length; const offline = devices.length-online; document.getElementById('onlineCount').innerText=online; document.getElementById('offlineCount').innerText=offline; }
+// Simulate polling (in production replace with fetch('/api/poll') that runs ping/snmp)
+let simulateFail = false;
+function pollDevices(){
+  // calculate OLT/ONU counts
+  const oltCount = devices.filter(d=>d.type.toLowerCase().includes('olt')).length;
+  const onuCount = devices.filter(d=>d.type.toLowerCase().includes('onu')).length;
+  document.getElementById('oltCount').textContent = oltCount;
+  document.getElementById('onuCount').textContent = onuCount;
+  document.getElementById('ratio').textContent = oltCount+':'+onuCount;
 
-function renderDeviceTable(){ const wrap=document.getElementById('deviceTable'); wrap.innerHTML=''; devices.forEach(d=>{ const el=document.createElement('div'); el.className='d-flex align-items-center justify-content-between py-1 border-bottom'; let ops = `<button class='btn btn-sm btn-outline-secondary me-1' data-id='${d.id}' onclick='editDevice(${d.id})'><i class='fa-solid fa-pen-to-square'></i></button>`;
-    // role-based
-    if(!currentUser || currentUser.role!=='admin') ops = `<button class='btn btn-sm btn-outline-secondary me-1' onclick='viewDevice(${d.id})'><i class='fa-solid fa-eye'></i></button>`;
-    else ops += `<button class='btn btn-sm btn-danger' onclick='removeDevice(${d.id})'><i class='fa-solid fa-trash'></i></button>`;
-    el.innerHTML = `<div><span class='device-dot ${d.status==='online'?'dot-online':'dot-offline'}'></span><strong>${d.name}</strong><div class='small text-muted'>${d.ip} • ${d.vendor} • ${d.location}</div></div>
-      <div class='text-end'>${ops}</div>`; wrap.appendChild(el); }); }
+  // QoS metrics overall (aggregate)
+  let totalLatency=0, totalJ=0, totalPL=0;
+  devices.forEach(d=>{
+    // simulate per-device
+    if(simulateFail && Math.random()<0.12){ d._up=false; d.latency=0; d.jitter=0; d.ploss=100; pushLog(`${d.name} DOWN (simulated)`); }
+    else { d._up=true; d.latency = rand(1,120); d.jitter = rand(0,10); d.ploss = rand(0,2); }
+    totalLatency += d.latency; totalJ += d.jitter; totalPL += d.ploss;
+  });
+  const avgLat = totalLatency/devices.length; const avgJ = totalJ/devices.length; const avgPL = totalPL/devices.length;
+  document.getElementById('latency').textContent = avgLat.toFixed(1);
+  document.getElementById('jitter').textContent = avgJ.toFixed(1);
+  document.getElementById('ploss').textContent = avgPL.toFixed(2);
 
-function renderAlarms(){ const list=document.getElementById('alarmList'); list.innerHTML=''; alarms.slice().reverse().forEach(a=>{ const li=document.createElement('li'); li.className='list-group-item small'; li.innerHTML=`<div><strong>[${a.severity.toUpperCase()}]</strong> ${a.text}<div class='text-muted small'>${new Date(a.ts).toLocaleString()}</div></div>`; list.appendChild(li); }); }
+  // traffic value
+  const trafficVal = Math.max(1, Math.round(rand(20,500) + (avgPL>1? -rand(0,80):0)));
+  updateTrafficChart(trafficVal);
 
-function renderTopology(){ const svg=document.getElementById('topoSVG'); svg.innerHTML=''; const w=svg.clientWidth; const h=svg.clientHeight; const centerX=w/2; const centerY=h/2; const R=Math.min(w,h)/3; const angleStep=(Math.PI*2)/Math.max(1,devices.length); devices.forEach((d,i)=>{ const angle=i*angleStep - Math.PI/2; const x=centerX + R*Math.cos(angle); const y=centerY + R*Math.sin(angle); const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',centerX); line.setAttribute('y1',centerY); line.setAttribute('x2',x); line.setAttribute('y2',y); line.setAttribute('stroke','#cfd8e3'); line.setAttribute('stroke-width',1); svg.appendChild(line); const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.innerHTML = `<circle cx='${x}' cy='${y}' r='24' fill='${d.status==='online'?'#e6ffef':'#fff0f0'}' stroke='${d.status==='online'?'#28a745':'#dc3545'}' stroke-width='2'></circle><text x='${x}' y='${y+38}' font-size='11' text-anchor='middle' fill='#374151'>${d.name}</text>`; g.addEventListener('click',()=>{ showDevicePopup(d); }); svg.appendChild(g); }); const centerCircle=document.createElementNS('http://www.w3.org/2000/svg','circle'); centerCircle.setAttribute('cx',centerX); centerCircle.setAttribute('cy',centerY); centerCircle.setAttribute('r',28); centerCircle.setAttribute('fill','#ffffff'); centerCircle.setAttribute('stroke','#0d6efd'); centerCircle.setAttribute('stroke-width',2); svg.appendChild(centerCircle); const centerText=document.createElementNS('http://www.w3.org/2000/svg','text'); centerText.setAttribute('x',centerX); centerText.setAttribute('y',centerY+38); centerText.setAttribute('text-anchor','middle'); centerText.setAttribute('font-size','12'); centerText.setAttribute('fill','#374151'); centerText.textContent='NMS Controller'; svg.appendChild(centerText); }
+  // alerts
+  state.alerts = [];
+  devices.filter(d=>d._up===false).forEach(d=> state.alerts.push(`${d.name} DOWN`));
+  devices.filter(d=>d.ploss>1).forEach(d=> state.alerts.push(`${d.name} PacketLoss ${d.ploss.toFixed(2)}%`));
+  if(avgLat>80) state.alerts.push('High average latency');
+  renderDeviceTable(); renderAlerts();
+}
 
-function showDevicePopup(d){ alert(`Device: ${d.name}
-IP: ${d.ip}
-Type: ${d.type}
-Status: ${d.status}
-CPU: ${d.cpu}%
-RAM: ${d.ram}%`); }
+// Buttons
+document.getElementById('btnSimulateFail').addEventListener('click', ()=>{
+  simulateFail = !simulateFail;
+  document.getElementById('btnSimulateFail').textContent = simulateFail? 'Stop Sim Fail' : 'Simulate Fail';
+  pushLog(`SimulateFail = ${simulateFail}`);
+});
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  exportCSV();
+});
 
-// Tickets
-function renderTickets(){ const wrap=document.getElementById('ticketList'); wrap.innerHTML=''; if(tickets.length===0) { wrap.innerHTML='<div class="text-muted">No tickets</div>'; return; } tickets.slice().reverse().forEach(t=>{ const card=document.createElement('div'); card.className='card mb-2'; card.innerHTML = `<div class='card-body'><div class='d-flex justify-content-between'><div><h6>${t.title}</h6><div class='small text-muted'>Device: ${t.deviceName} • Priority: ${t.priority}</div></div><div><span class='badge ${t.status==='open'?'bg-danger':'bg-success'}'>${t.status}</span></div></div><div class='mt-2'><p class='small'>${t.description}</p></div><div class='d-flex justify-content-end gap-2'><button class='btn btn-sm btn-outline-secondary' onclick='assignTicket(${t.id})'>Assign</button><button class='btn btn-sm btn-primary' onclick='resolveTicket(${t.id})'>Resolve</button></div></div>`; wrap.appendChild(card); }); }
+function exportCSV(){
+  const rows = [['name','type','ip','status','latency_ms','jitter_ms','packet_loss_pct']];
+  devices.forEach(d=> rows.push([d.name,d.type,d.ip,d._up? 'UP':'DOWN',d.latency||'',d.jitter||'',d.ploss||'']));
+  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='devices_export.csv'; a.click(); URL.revokeObjectURL(url);
+  pushLog('Export CSV generated');
+}
 
-function assignTicket(id){ const t=tickets.find(x=>x.id===id); if(!t) return; t.assignedTo = currentUser? currentUser.username : 'unassigned'; t.status='in-progress'; save(TICKET_KEY,tickets); renderTickets(); alert('Assigned'); }
-function resolveTicket(id){ const t=tickets.find(x=>x.id===id); if(!t) return; t.status='resolved'; t.resolvedAt = Date.now(); save(TICKET_KEY,tickets); renderTickets(); alert('Resolved'); }
+// Persistence
+function saveState(){ localStorage.setItem('netmon.devices', JSON.stringify(devices)); }
+function loadState(){ const d = localStorage.getItem('netmon.devices'); if(d) devices = JSON.parse(d); }
 
-// Users
-function renderUsers(){ const wrap=document.getElementById('userList'); wrap.innerHTML=''; users.forEach(u=>{ const el=document.createElement('div'); el.className='d-flex justify-content-between py-1 border-bottom'; el.innerHTML = `<div><strong>${u.name}</strong><div class='small text-muted'>${u.username} • Role: ${u.role}</div></div><div><button class='btn btn-sm btn-outline-secondary' onclick='impersonate(${u.id})'>Impersonate</button></div>`; wrap.appendChild(el); }); }
-function impersonate(id){ const u=users.find(x=>x.id===id); if(!u) return; setCurrentUser(u); alert('Impersonated as '+u.username); renderAll(); }
-
-// Device CRUD actions
-function openModal(){ if(!currentUser){ alert('Login required to add devices'); return; } if(currentUser.role !== 'admin'){ alert('Only admin can add devices'); return; } const modal = new bootstrap.Modal(document.getElementById('deviceModal')); document.getElementById('deviceForm').reset(); document.getElementById('dev_id').value=''; modal.show(); }
-
-document.getElementById('openAddDevice').addEventListener('click', ()=> openModal());
-document.getElementById('saveDevice').addEventListener('click', ()=>{ const id=document.getElementById('dev_id').value; const name=document.getElementById('dev_name').value.trim(); const ip=document.getElementById('dev_ip').value.trim(); const type=document.getElementById('dev_type').value; const vendor=document.getElementById('dev_vendor').value.trim(); const loc=document.getElementById('dev_location').value.trim(); if(!name||!ip){ alert('Name & IP required'); return; } if(id){ const idx=devices.findIndex(x=>x.id==id); if(idx>-1){ devices[idx] = {...devices[idx],name,ip,type,vendor,location:loc}; } } else { if(!currentUser || currentUser.role!=='admin'){ alert('Only admin can add'); return; } devices.push({id:uid(),name,ip,type,vendor,location:loc,status:'online',cpu:5,ram:20,latency:1,packet_loss:0}); } save(DEV_KEY,devices); renderAll(); bootstrap.Modal.getInstance(document.getElementById('deviceModal')).hide(); });
-
-function editDevice(id){ const d=devices.find(x=>x.id==id); if(!d) return; if(!currentUser || currentUser.role!=='admin'){ alert('Only admin can edit'); return; } openModal(); document.getElementById('dev_id').value=d.id; document.getElementById('dev_name').value=d.name; document.getElementById('dev_ip').value=d.ip; document.getElementById('dev_type').value=d.type; document.getElementById('dev_vendor').value=d.vendor; document.getElementById('dev_location').value=d.location; }
-
-function viewDevice(id){ const d=devices.find(x=>x.id==id); if(!d) return; alert(`Device: ${d.name}
-IP: ${d.ip}
-Type: ${d.type}
-Status: ${d.status}
-CPU: ${d.cpu}%
-RAM: ${d.ram}%`); }
-
-function removeDevice(id){ if(!confirm('Delete device?')) return; if(!currentUser || currentUser.role!=='admin'){ alert('Only admin can delete'); return; } devices = devices.filter(x=>x.id!=id); save(DEV_KEY,devices); renderAll(); }
-
-// Tickets create
-document.getElementById('openNewTicket').addEventListener('click', ()=>{ const modal=new bootstrap.Modal(document.getElementById('ticketModal')); // populate devices
-  const sel=document.getElementById('tk_device'); sel.innerHTML=''; devices.forEach(d=>{ const opt=document.createElement('option'); opt.value=d.id; opt.textContent=`${d.name} (${d.ip})`; sel.appendChild(opt); }); modal.show(); });
-
-document.getElementById('saveTicket').addEventListener('click', ()=>{ const title=document.getElementById('tk_title').value.trim(); const deviceId=+document.getElementById('tk_device').value; const priority=document.getElementById('tk_priority').value; const desc=document.getElementById('tk_desc').value.trim(); if(!title){ alert('Title required'); return; } const dn = devices.find(d=>d.id===deviceId); const t={id:uid(),title,deviceId,deviceName: dn? dn.name:'-',priority,status:'open',description:desc,createdAt:Date.now()}; tickets.push(t); save(TICKET_KEY,tickets); bootstrap.Modal.getInstance(document.getElementById('ticketModal')).hide(); renderTickets(); alert('Ticket created'); });
-
-// Simulated polling and metrics update
-function simulateMetrics(){ devices = devices.map(d=>{ if(d.status==='online'){ d.cpu = Math.min(95, Math.max(2, Math.round(d.cpu + (Math.random()-0.5)*6))); d.ram = Math.min(98, Math.max(6, Math.round(d.ram + (Math.random()-0.5)*8))); d.latency = Math.max(1, +(d.latency + (Math.random()-0.5)*3).toFixed(1)); d.packet_loss = Math.max(0, +(d.packet_loss + (Math.random()-0.5)*0.3).toFixed(2)); if(Math.random()<0.03){ d.status='offline'; alarms.push({severity:'critical',text:`${d.name} went offline`,ts:Date.now()}); } } else { if(Math.random()<0.06){ d.status='online'; alarms.push({severity:'info',text:`${d.name} back online`,ts:Date.now()}); d.cpu=5; d.ram=20; } } if(d.cpu>85) alarms.push({severity:'warning',text:`High CPU on ${d.name} (${d.cpu}%)`,ts:Date.now()}); if(d.packet_loss>2) alarms.push({severity:'warning',text:`High packet loss on ${d.name} (${d.packet_loss}%)`,ts:Date.now()}); return d; }); if(alarms.length>300) alarms = alarms.slice(-300); save(DEV_KEY,devices); }
-
-// Charts
-let qosChart, perfChart; function initCharts(){ const qosCtx=document.getElementById('qosChart'); const perfCtx=document.getElementById('perfChart'); qosChart=new Chart(qosCtx,{ type:'line', data:{labels:[],datasets:[{label:'Avg Latency (ms)', data:[], tension:0.4, fill:false},{label:'Avg Packet Loss (%)', data:[], tension:0.4, fill:false}]}, options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}}); perfChart=new Chart(perfCtx,{ type:'line', data:{labels:[],datasets:[{label:'Avg CPU (%)', data:[], tension:0.4, fill:false},{label:'Avg RAM (%)', data:[], tension:0.4, fill:false}]}, options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}}); }
-
-function updateCharts(){ const avgLatency=+(devices.reduce((s,d)=>s+(d.latency||0),0)/devices.length||0).toFixed(2); const avgPL=+(devices.reduce((s,d)=>s+(d.packet_loss||0),0)/devices.length||0).toFixed(2); const avgCpu=+(devices.reduce((s,d)=>s+(d.cpu||0),0)/devices.length||0).toFixed(2); const avgRam=+(devices.reduce((s,d)=>s+(d.ram||0),0)/devices.length||0).toFixed(2); const now=new Date().toLocaleTimeString(); function push(chart,a,b){ chart.data.labels.push(now); chart.data.datasets[0].data.push(a); chart.data.datasets[1].data.push(b); if(chart.data.labels.length>30){ chart.data.labels.shift(); chart.data.datasets.forEach(ds=>{ ds.data.shift(); }); } chart.update(); } push(qosChart, avgLatency, avgPL); push(perfChart, avgCpu, avgRam); }
-
-// OLT Panel simulation
-function renderOLTPanel(){ const olt = devices.find(d=>d.type==='olt'); document.getElementById('oltName').innerText = olt? olt.name : '-'; const onus=[]; if(olt){ for(let i=1;i<=8;i++){ const status = Math.random()<0.1? 'down' : 'up'; onus.push({id:i,pon:`PON-${Math.ceil(i/4)}`,sn:`ONU-${olt.id}-${i}`,rx: +( -28 + Math.random()*6).toFixed(2),status}); } } document.getElementById('onuCount').innerText = onus.filter(o=>o.status==='up').length; document.getElementById('avgRx').innerText = onus.length? (onus.reduce((s,o)=>s+o.rx,0)/onus.length).toFixed(2) : '-'; const table=document.getElementById('onuTable'); table.innerHTML=''; onus.forEach(o=>{ const row=document.createElement('div'); row.className='d-flex justify-content-between align-items-center py-1 border-bottom'; row.innerHTML = `<div><strong>${o.sn}</strong><div class='small text-muted'>${o.pon} • RX ${o.rx} dBm</div></div><div><span class='badge ${o.status==='up'?'bg-success':'bg-danger'}'>${o.status}</span></div>`; table.appendChild(row); }); }
-
-// heartbeat
-function renderAll(){ renderSummary(); renderDeviceTable(); renderTopology(); renderAlarms(); renderOLTPanel(); }
-function heartbeat(){ simulateMetrics(); renderAll(); updateCharts(); }
-
-// utils
-function uid(){ return Date.now()+Math.floor(Math.random()*999); }
-function save(key,data){ localStorage.setItem(key, JSON.stringify(data)); }
-
-// export CSV
-function exportCSV(){ let csv='id,name,ip,type,vendor,location,status,cpu,ram,latency,packet_loss
-'; devices.forEach(d=>{ csv += `${d.id},"${d.name}",${d.ip},${d.type},${d.vendor},${d.location},${d.status},${d.cpu},${d.ram},${d.latency},${d.packet_loss}
-`; }); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='nms-devices.csv'; a.click(); URL.revokeObjectURL(url); }
-
-document.getElementById('exportCSV').addEventListener('click', ()=>{ exportCSV(); });
-
-// backup configs (export JSON)
-document.getElementById('backupConfigs').addEventListener('click', ()=>{ const blob=new Blob([JSON.stringify(devices,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='nms-devices-backup.json'; a.click(); URL.revokeObjectURL(url); });
-
-document.getElementById('clearStorage').addEventListener('click', ()=>{ if(confirm('Reset demo data?')){ localStorage.removeItem(DEV_KEY); localStorage.removeItem(TICKET_KEY); localStorage.removeItem(USER_KEY); devices = load(DEV_KEY, sampleDevices); tickets = []; users = load(USER_KEY, sampleUsers); alarms = []; renderAll(); alert('Reset done'); }});
-
-// Login flow (demo)
-document.getElementById('loginBtn').addEventListener('click', ()=>{ const modal=new bootstrap.Modal(document.getElementById('loginModal')); modal.show(); });
-document.getElementById('doLogin').addEventListener('click', ()=>{ const user=document.getElementById('lg_user').value.trim(); const pass=document.getElementById('lg_pass').value; const u = users.find(x=>x.username===user && x.password===pass); if(!u){ alert('Invalid demo credentials'); return; } setCurrentUser(u); bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide(); renderAll(); });
-
-document.getElementById('logoutBtn').addEventListener('click', ()=>{ setCurrentUser(null); renderAll(); });
-
-// Tickets action buttons are simple; handled above
-
-// Reports generation (simple SLA calculation)
-document.getElementById('genReport').addEventListener('click', ()=>{ const from=document.getElementById('r_from').value; const to=document.getElementById('r_to').value; if(!from||!to){ alert('Choose date range'); return; } const fromTs=new Date(from).getTime(); const toTs=new Date(to).getTime()+24*3600*1000-1; // inclusive
-  // For demo, compute uptime% = (total time devices online) / (total time) averaged
-  const totalWindow = toTs - fromTs; if(totalWindow<=0){ alert('Invalid range'); return; }
-  // Simulate: assume each device had 97-99% uptime randomly
-  const report = devices.map(d=>{ const uptime = +(97 + Math.random()*2).toFixed(2); return {device:d.name, uptime}; }); let html = '<table class="table"><thead><tr><th>Device</th><th>Uptime %</th></tr></thead><tbody>'; report.forEach(r=>{ html += `<tr><td>${r.device}</td><td>${r.uptime}%</td></tr>` }); html += '</tbody></table>'; html += `<div class="mt-2"><strong>Avg Uptime:</strong> ${ (report.reduce((s,r)=>s+r.uptime,0)/report.length).toFixed(2) }%</div>`; document.getElementById('reportOutput').innerHTML = html; });
-
-// simulate periodic
-initCharts(); renderAll(); updateCharts(); setInterval(heartbeat,5000);
-
-document.getElementById('refreshNow').addEventListener('click', ()=>{ heartbeat(); alert('Refreshed'); });
-
-// expose some functions for buttons
-window.editDevice = editDevice; window.removeDevice = removeDevice; window.viewDevice = viewDevice; window.assignTicket = assignTicket; window.resolveTicket = resolveTicket; window.impersonate = impersonate;
-
-// save initial sample users if not present
-if(!localStorage.getItem(USER_KEY)){ localStorage.setItem(USER_KEY, JSON.stringify(sampleUsers)); }
-
-console.log('NMS Prototype (complete) ready');
+// Init
+loadState(); renderDeviceTable(); pollDevices();
+setInterval(()=>{ pollDevices(); saveState(); }, UPDATE_INTERVAL);
+pushLog('Dashboard started');
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- PRO++ Enhancements Added -->
-  <script>
-    /* ====== AUTO-TOPOLOGY DISCOVERY (SIMULATED LLDP/CDP) ======*/
-    function autoDiscoverTopology() {
-      const devices = JSON.parse(localStorage.getItem("devices") || "[]");
-      const topology = devices.map(d => ({ id: d.id, name: d.name, type: d.type }));
-      console.log("Auto-discovered topology:", topology);
-      // Placeholder: real LLDP/CDP engine integration
-    }
-    setInterval(autoDiscoverTopology, 8000);
 
-    /* ====== SNMP ENGINE PLACEHOLDER (READY FOR BACKEND) ======*/
-    async function snmpPoll(device) {
-      return {
-        cpu: Math.random() * 100,
-        ram: Math.random() * 100,
-        temperature: 30 + Math.random() * 20,
-        uptime: Math.floor(Math.random() * 99999)
-      };
-    }
-
-    /* ====== ADVANCED ALERT RULE ENGINE ======*/
-    const alertRules = [
-      { id: 1, metric: "latency", limit: 120, severity: "High" },
-      { id: 2, metric: "packet_loss", limit: 10, severity: "Critical" },
-      { id: 3, metric: "cpu", limit: 85, severity: "Warning" }
-    ];
-
-    function evaluateAlertRules(data) {
-      alertRules.forEach(rule => {
-        if (data[rule.metric] >= rule.limit) {
-          console.log(`ALERT: ${rule.metric} exceeds limit (${rule.limit})`);
-        }
-      });
-    }
-
-    /* ====== AI-ASSISTED RCA ENGINE (SIMULATED) ======*/
-    function runRCA(inputs) {
-      if (inputs.packet_loss > 20) return "Kemungkinan besar masalah fiber terputus atau power rendah.";
-      if (inputs.latency > 200) return "Kemungkinan congested / bandwidth penuh.";
-      if (inputs.cpu > 90) return "Device overload, perlu reboot atau offload traffic.";
-      return "Normal.";
-    }
-
-    /* ====== SCHEDULED MAINTENANCE MANAGER ======*/
-    const maintenance = [];
-
-    function scheduleMaintenance(device, date, note) {
-      maintenance.push({ device, date, note, status: "Scheduled" });
-      console.log("Maintenance scheduled:", maintenance);
-    }
-
-  </script>
 </body>
 </html>
