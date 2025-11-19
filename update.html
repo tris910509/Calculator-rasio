@@ -1,350 +1,405 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ISP Dashboard PRO — Full</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NMS Dashboard — Prototype</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    :root{--sidebar:#0b5ed7;--bg:#f8f9fa}
-    body{background:var(--bg);}
-    .sidebar{width:280px;height:100vh;background:var(--sidebar);padding:22px;position:fixed;left:0;top:0;color:#fff}
-    .content{margin-left:300px;padding:22px}
-    .menu-item{padding:10px 6px;font-size:18px;cursor:pointer;display:flex;align-items:center;border-radius:8px}
-    .menu-item i{width:28px}
-    .menu-item:hover{background:rgba(255,255,255,0.05)}
-    .card-custom{border-radius:12px}
-    .small-muted{font-size:13px;color:#cfe2ff}
-    #map{height:300px;border-radius:10px}
-    .dark body{background:#0b1220;color:#d0d7de}
-    @media(max-width:900px){.sidebar{position:relative;width:100%;height:auto}.content{margin-left:0}}
+    body {background:#f5f7fb}
+    .card-compact {padding: .6rem}
+    .topology {background:#fff;border-radius:10px;padding:10px;height:320px;overflow:auto}
+    .device-dot {width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:6px}
+    .dot-online{background:#28a745}
+    .dot-offline{background:#dc3545}
+    .sidebar {min-width:260px}
+    .chart-wrap{height:180px}
+    pre {white-space:pre-wrap}
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="d-flex align-items-center mb-3">
-      <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width:44px;height:44px;font-weight:700">PRO</div>
-      <div class="ms-2">
-        <div style="font-weight:700">ISP Dashboard PRO</div>
-        <div class="small-muted">All-in-one Network Management</div>
-      </div>
-    </div>
-
-    <div class="menu-item" onclick="show('overview')"><i class="fa-solid fa-gauge"></i> Overview</div>
-    <div class="menu-item" onclick="show('network')"><i class="fa-solid fa-wifi"></i> Network Ratio</div>
-    <div class="menu-item" onclick="show('olt')"><i class="fa-solid fa-network-wired"></i> OLT / PON</div>
-    <div class="menu-item" onclick="show('qos')"><i class="fa-solid fa-wave-square"></i> QoS Monitor</div>
-    <div class="menu-item" onclick="show('ont')"><i class="fa-solid fa-server"></i> ONT Status</div>
-    <div class="menu-item" onclick="show('map')"><i class="fa-solid fa-map-location-dot"></i> Customer Map</div>
-    <div class="menu-item" onclick="show('reports')"><i class="fa-solid fa-file-lines"></i> Reports</div>
-    <div class="menu-item" onclick="show('admin')"><i class="fa-solid fa-users"></i> Admin</div>
-
-    <div class="mt-4 small-muted">Version PRO • Local Demo</div>
-
-    <div class="mt-4">
-      <div class="form-check form-switch text-white">
-        <input class="form-check-input" type="checkbox" id="darkToggle" onchange="toggleDark()">
-        <label class="form-check-label small-muted" for="darkToggle">Dark Mode</label>
-      </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#"><i class="fa-solid fa-network-wired"></i> NMS Prototype</a>
+    <div class="d-flex">
+      <button id="refreshNow" class="btn btn-outline-light btn-sm me-2">Refresh Now</button>
+      <div class="text-white-50 small">Admin</div>
     </div>
   </div>
+</nav>
 
-  <div class="content">
-    <!-- Overview -->
-    <div id="overview" class="view">
-      <div class="d-flex justify-content-between align-items-center">
-        <h3>Overview</h3>
-        <div>
-          <button class="btn btn-outline-secondary me-2" onclick="exportCSV(ontData,'ont-status.csv')"><i class="fa-solid fa-file-csv"></i> Export ONT CSV</button>
-          <button class="btn btn-primary" onclick="openLogin()"><i class="fa-solid fa-user-lock"></i> Admin Login</button>
+<div class="container-fluid mt-3">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-lg-3 mb-3">
+      <div class="card sidebar shadow-sm">
+        <div class="card-body">
+          <h6>Summary</h6>
+          <div class="row text-center">
+            <div class="col-6">
+              <div class="h2" id="onlineCount">0</div>
+              <div class="small">Online Devices</div>
+            </div>
+            <div class="col-6">
+              <div class="h2" id="offlineCount">0</div>
+              <div class="small">Offline Devices</div>
+            </div>
+          </div>
+
+          <hr>
+          <h6>Quick Ops</h6>
+          <div class="d-grid gap-2">
+            <button class="btn btn-sm btn-primary" id="openAddDevice">Add Device</button>
+            <button class="btn btn-sm btn-outline-secondary" id="backupConfigs">Backup All Configs</button>
+            <button class="btn btn-sm btn-outline-danger" id="clearStorage">Reset Demo</button>
+          </div>
+
+          <hr>
+          <h6>Alarms</h6>
+          <ul class="list-group list-group-flush" id="alarmList" style="max-height:200px;overflow:auto"></ul>
         </div>
       </div>
+    </div>
 
-      <div class="row mt-3">
-        <div class="col-md-3">
-          <div class="card card-custom p-3 shadow-sm">
-            <h6>Total OLT</h6>
-            <div class="h3" id="stat_olt">-</div>
-            <div class="small-muted">Configured OLT devices</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card card-custom p-3 shadow-sm">
-            <h6>Active ONU</h6>
-            <div class="h3" id="stat_onu">-</div>
-            <div class="small-muted">Connected ONUs</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card card-custom p-3 shadow-sm">
-            <h6>Avg Latency</h6>
-            <div class="h3" id="stat_latency">- ms</div>
-            <div class="small-muted">Last 5 min</div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card card-custom p-3 shadow-sm">
-            <h6>QoS Health</h6>
-            <div class="h3" id="stat_qos">-</div>
-            <div class="small-muted">Aggregated score</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row mt-4">
-        <div class="col-md-8">
-          <div class="card p-3 shadow-sm">
-            <h6>QoS History</h6>
-            <canvas id="qosChart" height="120"></canvas>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card p-3 shadow-sm">
-            <h6>Quick Tools</h6>
-            <div class="mt-2">
-              <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="show('network')"><i class="fa-solid fa-wifi"></i> OLT/ONU Ratio</button>
-              <button class="btn btn-sm btn-outline-warning w-100 mb-2" onclick="show('qos')"><i class="fa-solid fa-ethernet"></i> QoS Analyzer</button>
-              <button class="btn btn-sm btn-outline-success w-100" onclick="show('map')"><i class="fa-solid fa-map"></i> Customer Map</button>
+    <!-- Main -->
+    <div class="col-lg-9">
+      <div class="row g-3">
+        <div class="col-md-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Network Map & Topology</h5>
+                <small class="text-muted">Auto-discovery demo (simulated)</small>
+              </div>
+              <div class="row mt-3">
+                <div class="col-md-8">
+                  <div class="topology" id="topologyArea">
+                    <!-- Simple topology SVG / Canvas -->
+                    <svg width="100%" height="280" id="topoSVG"></svg>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card-compact">
+                    <h6>Device List</h6>
+                    <div id="deviceTable" style="max-height:260px;overflow:auto"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Network Ratio / Calculator -->
-    <div id="network" class="view" style="display:none">
-      <h3>Network Ratio / OLT-ONU Calculator</h3>
-      <div class="row mt-3">
         <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <label>OLT Ports (total)</label>
-            <input id="inputOltPorts" class="form-control mt-1" type="number" placeholder="e.g. 64">
-            <label class="mt-2">ONU Active</label>
-            <input id="inputOnuActive" class="form-control mt-1" type="number" placeholder="e.g. 520">
-            <button class="btn btn-primary mt-3 w-100" onclick="calcRatio()">Calculate Ratio</button>
-            <div class="mt-2"><strong>Result:</strong> <span id="ratioOut">-</span></div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6>OLT / PON Control (Simulated)</h6>
-            <p class="small-muted">Manage OLT devices and ports. Changes saved to localStorage (demo).</p>
-            <div class="d-flex mb-2">
-              <input id="newOltName" class="form-control me-2" placeholder="OLT name">
-              <button class="btn btn-success" onclick="addOlt()"><i class="fa-solid fa-plus"></i></button>
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h6>QoS Panel (Latency & Packet Loss)</h6>
+              <div class="chart-wrap"><canvas id="qosChart"></canvas></div>
             </div>
-            <ul id="oltList" class="list-group"></ul>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- OLT / PON Details -->
-    <div id="olt" class="view" style="display:none">
-      <h3>OLT / PON — Devices</h3>
-      <div class="card p-3 shadow-sm mt-2">
-        <table class="table table-striped" id="oltTable">
-          <thead><tr><th>Name</th><th>Ports</th><th>Assigned ONUs</th><th>Actions</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- QoS Monitor -->
-    <div id="qos" class="view" style="display:none">
-      <h3>QoS Monitor & Analyzer</h3>
-      <div class="row mt-3">
         <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <label>Latency (ms)</label>
-            <input id="latencyIn" class="form-control" type="number" placeholder="e.g. 20">
-            <label class="mt-2">Jitter (ms)</label>
-            <input id="jitterIn" class="form-control" type="number" placeholder="e.g. 5">
-            <label class="mt-2">Packet Loss (%)</label>
-            <input id="lossIn" class="form-control" type="number" placeholder="e.g. 0.2">
-            <button class="btn btn-warning mt-3 w-100" onclick="analyzeQoS()">Analyze</button>
-            <div class="mt-2"><strong>Analysis:</strong> <span id="qosOut">-</span></div>
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h6>Performance (CPU / RAM)</h6>
+              <div class="chart-wrap"><canvas id="perfChart"></canvas></div>
+            </div>
           </div>
         </div>
-        <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6>Realtime Mini</h6>
-            <p>Status: <span id="realtimeStatus">Initializing...</span></p>
-            <h6 class="mt-3">Active Alerts</h6>
-            <ul id="alerts" class="list-group"></ul>
+
+        <div class="col-md-12">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h6>OLT Control Panel (PON)</h6>
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="small text-muted">OLT Summary</div>
+                  <div class="mt-2">
+                    <div>OLT Name: <strong id="oltName">-</strong></div>
+                    <div>Active ONUs: <strong id="onuCount">0</strong></div>
+                    <div>Avg Rx Power: <strong id="avgRx">-</strong> dBm</div>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <div id="onuTable" style="max-height:160px;overflow:auto"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ONT Status -->
-    <div id="ont" class="view" style="display:none">
-      <h3>ONT Status</h3>
-      <div class="card p-3 shadow-sm mt-2">
-        <div class="d-flex mb-2">
-          <input id="filterSearch" class="form-control me-2" placeholder="Search by ID or customer">
-          <select id="filterStatus" class="form-select w-auto">
-            <option value="">All status</option>
-            <option value="online">Online</option>
-            <option value="offline">Offline</option>
-            <option value="degraded">Degraded</option>
-          </select>
-          <button class="btn btn-secondary ms-2" onclick="renderOntTable()">Filter</button>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover" id="ontTable">
-            <thead><tr><th>ID</th><th>Customer</th><th>GPON</th><th>Latency</th><th>Jitter</th><th>Loss</th><th>Status</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Customer Map -->
-    <div id="map" class="view" style="display:none">
-      <h3>Customer Map</h3>
-      <div class="card p-3 shadow-sm mt-2"><div id="map"></div></div>
-    </div>
-
-    <!-- Reports -->
-    <div id="reports" class="view" style="display:none">
-      <h3>Reports</h3>
-      <div class="card p-3 shadow-sm mt-2">
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" onclick="downloadReport('qos')">Download QoS Report (CSV)</button>
-          <button class="btn btn-outline-success" onclick="downloadReport('ont')">Download ONT Report (CSV)</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Admin -->
-    <div id="admin" class="view" style="display:none">
-      <h3>Admin</h3>
-      <div class="card p-3 shadow-sm mt-2">
-        <h6>Users</h6>
-        <div class="d-flex mb-2">
-          <input id="newUser" class="form-control me-2" placeholder="email or username">
-          <select id="newRole" class="form-select w-auto me-2"><option>admin</option><option>operator</option><option>viewer</option></select>
-          <button class="btn btn-primary" onclick="addUser()">Add User</button>
-        </div>
-        <ul id="userList" class="list-group"></ul>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Login Modal -->
-  <div class="modal" tabindex="-1" id="loginModal">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Admin Login (demo)</h5><button type="button" class="btn-close" onclick="closeLogin()"></button></div>
-        <div class="modal-body">
-          <input id="loginUser" class="form-control mb-2" placeholder="username">
-          <input id="loginPass" type="password" class="form-control" placeholder="password">
-        </div>
-        <div class="modal-footer"><button class="btn btn-primary" onclick="doLogin()">Login</button></div>
       </div>
     </div>
   </div>
+</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Add Device Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add / Edit Device</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="deviceForm">
+          <div class="mb-2">
+            <label class="form-label">Name</label>
+            <input class="form-control" id="dev_name" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">IP</label>
+            <input class="form-control" id="dev_ip" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="dev_type">
+              <option value="router">Router</option>
+              <option value="switch">Switch</option>
+              <option value="olt">OLT</option>
+              <option value="ap">Access Point</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Vendor</label>
+            <input class="form-control" id="dev_vendor">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Location</label>
+            <input class="form-control" id="dev_location">
+          </div>
+          <input type="hidden" id="dev_id">
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="saveDevice">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-// --- State (local demo) ---
-let oltDevices = JSON.parse(localStorage.getItem('oltDevices')||'[]');
-let users = JSON.parse(localStorage.getItem('ispUsers')||'[]');
-let ontData = JSON.parse(localStorage.getItem('ontData')||'null');
-if(!ontData){ // seed sample ONT data
-  ontData = [];
-  for(let i=1;i<=50;i++){
-    let st = Math.random()>0.85? 'offline': Math.random()>0.15? 'online':'degraded';
-    ontData.push({id:'ONT-'+(1000+i), customer:'Cust-'+i, gpon:'GPON-'+((i%8)+1), latency:(10+Math.random()*60).toFixed(1), jitter:(Math.random()*10).toFixed(1), loss:(Math.random()*2).toFixed(2), status:st, lat: -6.2 + Math.random()*0.2, lng:106.8 + Math.random()*0.2});
+// Demo prototype: Simulated NMS dashboard
+// Data persistence in localStorage for demo
+const STORAGE_KEY = 'nms_demo_devices_v1';
+
+// Sample initial devices if none exist
+const sampleDevices = [
+  {id:1,name:'Core-RTR-01',ip:'10.0.0.1',type:'router',vendor:'Cisco',location:'DC-1',status:'online',cpu:12,ram:45,latency:2,packet_loss:0},
+  {id:2,name:'Switch-Edge-02',ip:'10.0.1.2',type:'switch',vendor:'HPE',location:'Floor-2',status:'online',cpu:22,ram:60,latency:5,packet_loss:0},
+  {id:3,name:'OLT-01',ip:'10.0.2.1',type:'olt',vendor:'Huawei',location:'POP-1',status:'online',cpu:18,ram:55,latency:10,packet_loss:0.1},
+  {id:4,name:'AP-Store-03',ip:'10.0.3.3',type:'ap',vendor:'Ubiquiti',location:'Store-3',status:'offline',cpu:0,ram:0,latency:0,packet_loss:0}
+];
+
+function loadDevices(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleDevices));
+    return sampleDevices.slice();
   }
-  localStorage.setItem('ontData',JSON.stringify(ontData));
+  try{ return JSON.parse(raw);}catch(e){localStorage.removeItem(STORAGE_KEY); return sampleDevices.slice();}
 }
 
-// --- Navigation ---
-function show(id){ document.querySelectorAll('.view').forEach(v=>v.style.display='none'); document.getElementById(id).style.display='block'; if(id==='map'){renderMap()} }
-show('overview');
+function saveDevices(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
 
-// --- Ratio ---
-function calcRatio(){ let ports=parseFloat(document.getElementById('inputOltPorts').value)||0; let onu=parseFloat(document.getElementById('inputOnuActive').value)||0; if(!ports) return alert('Masukkan OLT ports'); let r=(onu/ports).toFixed(2); document.getElementById('ratioOut').innerText = r + ' ONU per port'; }
+let devices = loadDevices();
+let alarms = [];
 
-// --- OLT management ---
-function addOlt(){ let name=document.getElementById('newOltName').value.trim(); if(!name) return alert('Nama OLT kosong'); oltDevices.push({name:name, ports:64, assigned:Math.floor(Math.random()*40)}); localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); renderOltList(); renderOltTable(); document.getElementById('newOltName').value=''; }
-function renderOltList(){ let ul=document.getElementById('oltList'); ul.innerHTML=''; oltDevices.forEach((o,idx)=>{ let li=document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center'; li.innerHTML = `<div><strong>${o.name}</strong><div class="small-muted">Ports ${o.ports} • Assigned ${o.assigned}</div></div><div><button class="btn btn-sm btn-danger" onclick="removeOlt(${idx})"><i class='fa fa-trash'></i></button></div>`; ul.appendChild(li); }) }
-function removeOlt(i){ if(!confirm('Hapus OLT?')) return; oltDevices.splice(i,1); localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); renderOltList(); renderOltTable(); }
-function renderOltTable(){ let tbody=document.querySelector('#oltTable tbody'); tbody.innerHTML=''; oltDevices.forEach(o=>{ let tr=document.createElement('tr'); tr.innerHTML=`<td>${o.name}</td><td>${o.ports}</td><td>${o.assigned}</td><td><button class='btn btn-sm btn-outline-primary' onclick="alert('Open control for ${o.name} (simulated)')">Manage</button></td>`; tbody.appendChild(tr); }) }
-renderOltList(); renderOltTable();
+// Helpers
+function uid(){return Date.now()+Math.floor(Math.random()*999);} 
 
-// --- QoS Analyzer + Chart ---
-let qosChart = new Chart(document.getElementById('qosChart'),{type:'line',data:{labels:[],datasets:[{label:'QoS Score',data:[],tension:0.4}]},options:{scales:{y:{min:0,max:100}}}});
-function analyzeQoS(){ let l=parseFloat(document.getElementById('latencyIn').value); let j=parseFloat(document.getElementById('jitterIn').value); let p=parseFloat(document.getElementById('lossIn').value); if(isNaN(l)||isNaN(j)||isNaN(p)) return alert('Isi semua parameter QoS'); let score = Math.max(0,100 - (l*0.25 + j*0.5 + p*5)); document.getElementById('qosOut').innerHTML = `<b>${score.toFixed(1)}</b> (${score>80?'Excellent':score>60?'Good':'Poor'})`; // push to chart
-  if(qosChart.data.labels.length>50){ qosChart.data.labels.shift(); qosChart.data.datasets[0].data.shift(); }
-  qosChart.data.labels.push(new Date().toLocaleTimeString()); qosChart.data.datasets[0].data.push(score.toFixed(1)); qosChart.update(); }
+// UI render
+function renderSummary(){
+  const online = devices.filter(d=>d.status==='online').length;
+  const offline = devices.length - online;
+  document.getElementById('onlineCount').innerText = online;
+  document.getElementById('offlineCount').innerText = offline;
+}
 
-// --- Realtime simulation (alerts, stats) ---
-setInterval(()=>{
-  // update stats
-  document.getElementById('stat_olt').innerText = oltDevices.length;
-  let activeOnu = ontData.filter(o=>o.status==='online').length;
-  document.getElementById('stat_onu').innerText = activeOnu;
-  let avgLat = (ontData.reduce((s,o)=>s+parseFloat(o.latency),0)/ontData.length).toFixed(1);
-  document.getElementById('stat_latency').innerText = avgLat + ' ms';
-  let avgQos = Math.max(0,(100 - avgLat*0.5)).toFixed(1);
-  document.getElementById('stat_qos').innerText = avgQos;
-  // mini realtime status
-  document.getElementById('realtimeStatus').innerText = Math.random()>0.05? 'Operational':'Partial outage';
-  // alerts
-  let alerts = document.getElementById('alerts'); alerts.innerHTML=''; if(Math.random()>0.9){ let it=document.createElement('li'); it.className='list-group-item list-group-item-danger'; it.innerText='Packet loss spike detected in zone 3'; alerts.appendChild(it);} },3000);
+function renderDeviceTable(){
+  const wrap = document.getElementById('deviceTable'); wrap.innerHTML='';
+  devices.forEach(d=>{
+    const el = document.createElement('div'); el.className='d-flex align-items-center justify-content-between py-1 border-bottom';
+    el.innerHTML = `<div><span class='device-dot ${d.status==='online'?'dot-online':'dot-offline'}'></span><strong>${d.name}</strong><div class='small text-muted'>${d.ip} • ${d.vendor} • ${d.location}</div></div>
+      <div class='text-end'><button class='btn btn-sm btn-outline-secondary me-1' data-id='${d.id}' onclick='editDevice(${d.id})'><i class='fa-solid fa-pen-to-square'></i></button><button class='btn btn-sm btn-danger' onclick='removeDevice(${d.id})'><i class='fa-solid fa-trash'></i></button></div>`;
+    wrap.appendChild(el);
+  });
+}
 
-// --- ONT table rendering + filter ---
-function renderOntTable(){ let tbody=document.querySelector('#ontTable tbody'); tbody.innerHTML=''; let q = document.getElementById('filterSearch').value.toLowerCase(); let st = document.getElementById('filterStatus').value; let filtered = ontData.filter(o=>{ if(st && o.status!==st) return false; if(q && !(o.id.toLowerCase().includes(q)||o.customer.toLowerCase().includes(q))) return false; return true; }); filtered.forEach(o=>{ let tr=document.createElement('tr'); tr.innerHTML = `<td>${o.id}</td><td>${o.customer}</td><td>${o.gpon}</td><td>${o.latency} ms</td><td>${o.jitter} ms</td><td>${o.loss} %</td><td><span class="badge bg-${o.status==='online'?'success':o.status==='offline'?'danger':'warning'}">${o.status}</span></td>`; tbody.appendChild(tr); }); }
-renderOntTable();
+function renderAlarms(){
+  const list = document.getElementById('alarmList'); list.innerHTML='';
+  alarms.slice().reverse().forEach(a=>{
+    const li = document.createElement('li'); li.className='list-group-item small';
+    li.innerHTML = `<div><strong>[${a.severity.toUpperCase()}]</strong> ${a.text}<div class='text-muted small'>${new Date(a.ts).toLocaleString()}</div></div>`;
+    list.appendChild(li);
+  });
+}
 
-// --- Map (Leaflet) ---
-let mapObj=null; function renderMap(){ if(mapObj) return; mapObj = L.map('map').setView([-6.2,106.8],11); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(mapObj); ontData.forEach(o=>{ let m=L.circleMarker([o.lat,o.lng],{radius:6}).addTo(mapObj); m.bindPopup(`${o.id}<br>${o.customer}<br>Status: ${o.status}`); }); }
+function renderTopology(){
+  // Simple SVG layout connecting devices
+  const svg = document.getElementById('topoSVG');
+  svg.innerHTML='';
+  const w = svg.clientWidth; const h = svg.clientHeight;
+  // place devices in circular layout
+  const centerX = w/2; const centerY = h/2; const R = Math.min(w,h)/3;
+  const angleStep = (Math.PI*2)/devices.length;
+  devices.forEach((d,i)=>{
+    const angle = i*angleStep - Math.PI/2;
+    const x = centerX + R*Math.cos(angle);
+    const y = centerY + R*Math.sin(angle);
+    // lines to center
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',centerX); line.setAttribute('y1',centerY); line.setAttribute('x2',x); line.setAttribute('y2',y);
+    line.setAttribute('stroke','#cfd8e3'); line.setAttribute('stroke-width',1);
+    svg.appendChild(line);
+    // circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','g');
+    circle.innerHTML = `<circle cx='${x}' cy='${y}' r='24' fill='${d.status==='online'?"#e6ffef":"#fff0f0"}' stroke='${d.status==='online'?"#28a745":"#dc3545"}' stroke-width='2'></circle><text x='${x}' y='${y+38}' font-size='11' text-anchor='middle' fill='#374151'>${d.name}</text>`;
+    // attach click
+    circle.addEventListener('click',()=>{ showDevicePopup(d); });
+    svg.appendChild(circle);
+  });
+  // center
+  const centerCircle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  centerCircle.setAttribute('cx',centerX); centerCircle.setAttribute('cy',centerY); centerCircle.setAttribute('r',28);
+  centerCircle.setAttribute('fill','#ffffff'); centerCircle.setAttribute('stroke','#0d6efd'); centerCircle.setAttribute('stroke-width',2);
+  svg.appendChild(centerCircle);
+  const centerText = document.createElementNS('http://www.w3.org/2000/svg','text');
+  centerText.setAttribute('x',centerX); centerText.setAttribute('y',centerY+38); centerText.setAttribute('text-anchor','middle'); centerText.setAttribute('font-size','12'); centerText.setAttribute('fill','#374151'); centerText.textContent='NMS Controller';
+  svg.appendChild(centerText);
+}
 
-// --- Exports / Reports ---
-function exportCSV(arr, filename){ if(!arr||!arr.length) return alert('No data'); const keys = Object.keys(arr[0]); const csv = [keys.join(',')].concat(arr.map(r=>keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(','))).join('
-'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename||'report.csv'; a.click(); URL.revokeObjectURL(url); }
-function downloadReport(type){ if(type==='qos'){ // create sample qos entries
-    let data = []; for(let i=0;i<30;i++){ data.push({time:new Date(Date.now()-i*60000).toLocaleString(),latency:(10+Math.random()*40).toFixed(1),jitter:(Math.random()*10).toFixed(1),loss:(Math.random()*1).toFixed(2)}); } exportCSV(data,'qos_report.csv'); }
-  if(type==='ont'){ exportCSV(ontData,'ont_report.csv'); }}
+function showDevicePopup(d){
+  alert(`Device: ${d.name}\nIP: ${d.ip}\nType: ${d.type}\nStatus: ${d.status}\nCPU: ${d.cpu}%\nRAM: ${d.ram}%`);
+}
 
-// --- Admin users ---
-function addUser(){ let u=document.getElementById('newUser').value.trim(); let r=document.getElementById('newRole').value; if(!u) return alert('Isi user'); users.push({user:u,role:r}); localStorage.setItem('ispUsers',JSON.stringify(users)); renderUsers(); document.getElementById('newUser').value=''; }
-function renderUsers(){ let ul=document.getElementById('userList'); ul.innerHTML=''; users.forEach((x,idx)=>{ let li=document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center'; li.innerHTML = `<div>${x.user}<div class="small-muted">${x.role}</div></div><div><button class='btn btn-sm btn-danger' onclick="users.splice(${idx},1);localStorage.setItem('ispUsers',JSON.stringify(users));renderUsers()">Remove</button></div>`; ul.appendChild(li); }); }
-renderUsers();
+// Device CRUD actions
+function openModal(){
+  const modal = new bootstrap.Modal(document.getElementById('deviceModal'));
+  document.getElementById('deviceForm').reset(); document.getElementById('dev_id').value='';
+  modal.show();
+}
 
-// --- Login modal (demo) ---
-function openLogin(){ document.getElementById('loginModal').style.display='block'; }
-function closeLogin(){ document.getElementById('loginModal').style.display='none'; }
-function doLogin(){ let u=document.getElementById('loginUser').value; let p=document.getElementById('loginPass').value; if(u==='admin'&&p==='admin'){ alert('Login success (demo)'); closeLogin(); show('admin'); } else alert('Credentials demo: admin / admin'); }
+document.getElementById('openAddDevice').addEventListener('click', ()=> openModal());
 
-// --- Utilities ---
-function toggleDark(){ document.documentElement.classList.toggle('dark'); localStorage.setItem('dark', document.documentElement.classList.contains('dark')) }
-if(localStorage.getItem('dark')==='true'){ document.documentElement.classList.add('dark'); document.getElementById('darkToggle').checked=true }
+document.getElementById('saveDevice').addEventListener('click', ()=>{
+  const id = document.getElementById('dev_id').value;
+  const name = document.getElementById('dev_name').value.trim();
+  const ip = document.getElementById('dev_ip').value.trim();
+  const type = document.getElementById('dev_type').value;
+  const vendor = document.getElementById('dev_vendor').value.trim();
+  const loc = document.getElementById('dev_location').value.trim();
+  if(!name||!ip) { alert('Name & IP required'); return; }
+  if(id){
+    const idx = devices.findIndex(x=>x.id==id); if(idx>-1){ devices[idx] = {...devices[idx],name,ip,type,vendor,location:loc}; }
+  } else {
+    devices.push({id:uid(),name,ip,type,vendor,location:loc,status:'online',cpu:5,ram:20,latency:1,packet_loss:0});
+  }
+  saveDevices(devices); renderAll(); bootstrap.Modal.getInstance(document.getElementById('deviceModal')).hide();
+});
 
-function exportSelected(){ /* placeholder for future */ }
+function editDevice(id){
+  const d = devices.find(x=>x.id==id); if(!d) return; openModal();
+  document.getElementById('dev_id').value=d.id; document.getElementById('dev_name').value=d.name; document.getElementById('dev_ip').value=d.ip; document.getElementById('dev_type').value=d.type; document.getElementById('dev_vendor').value=d.vendor; document.getElementById('dev_location').value=d.location;
+}
 
-// --- download ONT CSV quick ---
-function downloadOntCSV(){ exportCSV(ontData,'ont_status.csv') }
+function removeDevice(id){ if(!confirm('Delete device?')) return; devices = devices.filter(x=>x.id!=id); saveDevices(devices); renderAll(); }
 
-// --- small helpers for initial page
-(function init(){ // seed sample olt if none
-  if(oltDevices.length===0){ oltDevices=[{name:'OLT-1',ports:64,assigned:32},{name:'OLT-2',ports:64,assigned:18}]; localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); }
-  renderOltList(); renderOltTable(); renderOntTable();
-  // push some QoS chart data
-  for(let i=10;i>=0;i--){ qosChart.data.labels.push(new Date(Date.now()-i*60000).toLocaleTimeString()); qosChart.data.datasets[0].data.push((70+Math.random()*20).toFixed(1)); }
-  qosChart.update();
-})();
+// Simulated polling and metrics update
+function simulateMetrics(){
+  devices = devices.map(d=>{
+    // randomize cpu/ram a bit if online
+    if(d.status==='online'){
+      d.cpu = Math.min(95, Math.max(2, Math.round(d.cpu + (Math.random()-0.5)*6)));
+      d.ram = Math.min(98, Math.max(6, Math.round(d.ram + (Math.random()-0.5)*8)));
+      d.latency = Math.max(1, +(d.latency + (Math.random()-0.5)*3).toFixed(1));
+      d.packet_loss = Math.max(0, +(d.packet_loss + (Math.random()-0.5)*0.3).toFixed(2));
+      // sometimes drop
+      if(Math.random()<0.02){ d.status='offline'; alarms.push({severity:'critical',text:`${d.name} went offline`,ts:Date.now()}); }
+    } else {
+      if(Math.random()<0.05){ d.status='online'; alarms.push({severity:'info',text:`${d.name} back online`,ts:Date.now()}); d.cpu=5; d.ram=20; }
+    }
+    // create warnings
+    if(d.cpu>85) alarms.push({severity:'warning',text:`High CPU on ${d.name} (${d.cpu}%)`,ts:Date.now()});
+    if(d.packet_loss>2) alarms.push({severity:'warning',text:`High packet loss on ${d.name} (${d.packet_loss}%)`,ts:Date.now()});
+    return d;
+  });
+  // trim alarms
+  if(alarms.length>200) alarms = alarms.slice(-200);
+  saveDevices(devices);
+}
 
-// Save ontData to global so export works
-window.ontData = ontData;
+// Charts
+let qosChart, perfChart;
+function initCharts(){
+  const qosCtx = document.getElementById('qosChart');
+  const perfCtx = document.getElementById('perfChart');
+  qosChart = new Chart(qosCtx, { type:'line', data:{labels:[],datasets:[{label:'Avg Latency (ms)', data:[], tension:0.4, fill:false},{label:'Avg Packet Loss (%)', data:[], tension:0.4, fill:false}]}, options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}});
+  perfChart = new Chart(perfCtx, { type:'line', data:{labels:[],datasets:[{label:'Avg CPU (%)', data:[], tension:0.4, fill:false},{label:'Avg RAM (%)', data:[], tension:0.4, fill:false}]}, options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}});
+}
 
+function updateCharts(){
+  const avgLatency = +(devices.reduce((s,d)=>s+(d.latency||0),0)/devices.length).toFixed(2);
+  const avgPL = +(devices.reduce((s,d)=>s+(d.packet_loss||0),0)/devices.length).toFixed(2);
+  const avgCpu = +(devices.reduce((s,d)=>s+(d.cpu||0),0)/devices.length).toFixed(2);
+  const avgRam = +(devices.reduce((s,d)=>s+(d.ram||0),0)/devices.length).toFixed(2);
+  const now = new Date().toLocaleTimeString();
+  // push to qosChart
+  function push(chart, a,b){ chart.data.labels.push(now); chart.data.datasets[0].data.push(a); chart.data.datasets[1].data.push(b); if(chart.data.labels.length>30){ chart.data.labels.shift(); chart.data.datasets.forEach(ds=>{ ds.data.shift(); }); } chart.update(); }
+  push(qosChart, avgLatency, avgPL);
+  push(perfChart, avgCpu, avgRam);
+}
+
+// OLT Panel simulation
+function renderOLTPanel(){
+  const olt = devices.find(d=>d.type==='olt');
+  document.getElementById('oltName').innerText = olt? olt.name : '-';
+  const onus = [];
+  if(olt){
+    // simulate some ONUs
+    for(let i=1;i<=8;i++){
+      const status = Math.random()<0.1? 'down' : 'up';
+      onus.push({id:i,pon:`PON-${Math.ceil(i/4)}`,sn:`ONU-${olt.id}-${i}`,rx: +( -28 + Math.random()*6).toFixed(2),status});
+    }
+  }
+  document.getElementById('onuCount').innerText = onus.filter(o=>o.status==='up').length;
+  document.getElementById('avgRx').innerText = onus.length? (onus.reduce((s,o)=>s+o.rx,0)/onus.length).toFixed(2) : '-';
+  const table = document.getElementById('onuTable'); table.innerHTML='';
+  onus.forEach(o=>{ const row = document.createElement('div'); row.className='d-flex justify-content-between align-items-center py-1 border-bottom'; row.innerHTML = `<div><strong>${o.sn}</strong><div class='small text-muted'>${o.pon} • RX ${o.rx} dBm</div></div><div><span class='badge ${o.status==='up'?'bg-success':'bg-danger'}'>${o.status}</span></div>`; table.appendChild(row); });
+}
+
+// periodic refresh
+function renderAll(){ renderSummary(); renderDeviceTable(); renderTopology(); renderAlarms(); renderOLTPanel(); }
+
+function heartbeat(){ simulateMetrics(); renderAll(); updateCharts(); }
+
+// initial
+initCharts(); renderAll(); updateCharts();
+
+// run heartbeat every 5s
+setInterval(heartbeat, 5000);
+
+// refresh now
+document.getElementById('refreshNow').addEventListener('click', ()=>{ heartbeat(); alert('Refreshed'); });
+
+// backup configs (demo: export JSON)
+document.getElementById('backupConfigs').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(devices,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = 'nms-devices-backup.json'; a.click(); URL.revokeObjectURL(url);
+});
+
+document.getElementById('clearStorage').addEventListener('click', ()=>{ if(confirm('Reset demo data?')){ localStorage.removeItem(STORAGE_KEY); devices = loadDevices(); alarms=[]; renderAll(); }});
+
+// allow editing from outside
+window.editDevice = editDevice; window.removeDevice = removeDevice; window.showDevicePopup = showDevicePopup;
+
+// expose some data for dev
+console.log('NMS Prototype ready — devices loaded:', devices);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
