@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ISP Dashboard PRO — Full</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root{--sidebar:#0b5ed7;--bg:#f8f9fa}
+    body{background:var(--bg);}
+    .sidebar{width:280px;height:100vh;background:var(--sidebar);padding:22px;position:fixed;left:0;top:0;color:#fff}
+    .content{margin-left:300px;padding:22px}
+    .menu-item{padding:10px 6px;font-size:18px;cursor:pointer;display:flex;align-items:center;border-radius:8px}
+    .menu-item i{width:28px}
+    .menu-item:hover{background:rgba(255,255,255,0.05)}
+    .card-custom{border-radius:12px}
+    .small-muted{font-size:13px;color:#cfe2ff}
+    #map{height:300px;border-radius:10px}
+    .dark body{background:#0b1220;color:#d0d7de}
+    @media(max-width:900px){.sidebar{position:relative;width:100%;height:auto}.content{margin-left:0}}
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="d-flex align-items-center mb-3">
+      <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width:44px;height:44px;font-weight:700">PRO</div>
+      <div class="ms-2">
+        <div style="font-weight:700">ISP Dashboard PRO</div>
+        <div class="small-muted">All-in-one Network Management</div>
+      </div>
+    </div>
+
+    <div class="menu-item" onclick="show('overview')"><i class="fa-solid fa-gauge"></i> Overview</div>
+    <div class="menu-item" onclick="show('network')"><i class="fa-solid fa-wifi"></i> Network Ratio</div>
+    <div class="menu-item" onclick="show('olt')"><i class="fa-solid fa-network-wired"></i> OLT / PON</div>
+    <div class="menu-item" onclick="show('qos')"><i class="fa-solid fa-wave-square"></i> QoS Monitor</div>
+    <div class="menu-item" onclick="show('ont')"><i class="fa-solid fa-server"></i> ONT Status</div>
+    <div class="menu-item" onclick="show('map')"><i class="fa-solid fa-map-location-dot"></i> Customer Map</div>
+    <div class="menu-item" onclick="show('reports')"><i class="fa-solid fa-file-lines"></i> Reports</div>
+    <div class="menu-item" onclick="show('admin')"><i class="fa-solid fa-users"></i> Admin</div>
+
+    <div class="mt-4 small-muted">Version PRO • Local Demo</div>
+
+    <div class="mt-4">
+      <div class="form-check form-switch text-white">
+        <input class="form-check-input" type="checkbox" id="darkToggle" onchange="toggleDark()">
+        <label class="form-check-label small-muted" for="darkToggle">Dark Mode</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Overview -->
+    <div id="overview" class="view">
+      <div class="d-flex justify-content-between align-items-center">
+        <h3>Overview</h3>
+        <div>
+          <button class="btn btn-outline-secondary me-2" onclick="exportCSV(ontData,'ont-status.csv')"><i class="fa-solid fa-file-csv"></i> Export ONT CSV</button>
+          <button class="btn btn-primary" onclick="openLogin()"><i class="fa-solid fa-user-lock"></i> Admin Login</button>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-3">
+          <div class="card card-custom p-3 shadow-sm">
+            <h6>Total OLT</h6>
+            <div class="h3" id="stat_olt">-</div>
+            <div class="small-muted">Configured OLT devices</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom p-3 shadow-sm">
+            <h6>Active ONU</h6>
+            <div class="h3" id="stat_onu">-</div>
+            <div class="small-muted">Connected ONUs</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom p-3 shadow-sm">
+            <h6>Avg Latency</h6>
+            <div class="h3" id="stat_latency">- ms</div>
+            <div class="small-muted">Last 5 min</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom p-3 shadow-sm">
+            <h6>QoS Health</h6>
+            <div class="h3" id="stat_qos">-</div>
+            <div class="small-muted">Aggregated score</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-md-8">
+          <div class="card p-3 shadow-sm">
+            <h6>QoS History</h6>
+            <canvas id="qosChart" height="120"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-3 shadow-sm">
+            <h6>Quick Tools</h6>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="show('network')"><i class="fa-solid fa-wifi"></i> OLT/ONU Ratio</button>
+              <button class="btn btn-sm btn-outline-warning w-100 mb-2" onclick="show('qos')"><i class="fa-solid fa-ethernet"></i> QoS Analyzer</button>
+              <button class="btn btn-sm btn-outline-success w-100" onclick="show('map')"><i class="fa-solid fa-map"></i> Customer Map</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Ratio / Calculator -->
+    <div id="network" class="view" style="display:none">
+      <h3>Network Ratio / OLT-ONU Calculator</h3>
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <label>OLT Ports (total)</label>
+            <input id="inputOltPorts" class="form-control mt-1" type="number" placeholder="e.g. 64">
+            <label class="mt-2">ONU Active</label>
+            <input id="inputOnuActive" class="form-control mt-1" type="number" placeholder="e.g. 520">
+            <button class="btn btn-primary mt-3 w-100" onclick="calcRatio()">Calculate Ratio</button>
+            <div class="mt-2"><strong>Result:</strong> <span id="ratioOut">-</span></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <h6>OLT / PON Control (Simulated)</h6>
+            <p class="small-muted">Manage OLT devices and ports. Changes saved to localStorage (demo).</p>
+            <div class="d-flex mb-2">
+              <input id="newOltName" class="form-control me-2" placeholder="OLT name">
+              <button class="btn btn-success" onclick="addOlt()"><i class="fa-solid fa-plus"></i></button>
+            </div>
+            <ul id="oltList" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OLT / PON Details -->
+    <div id="olt" class="view" style="display:none">
+      <h3>OLT / PON — Devices</h3>
+      <div class="card p-3 shadow-sm mt-2">
+        <table class="table table-striped" id="oltTable">
+          <thead><tr><th>Name</th><th>Ports</th><th>Assigned ONUs</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- QoS Monitor -->
+    <div id="qos" class="view" style="display:none">
+      <h3>QoS Monitor & Analyzer</h3>
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <label>Latency (ms)</label>
+            <input id="latencyIn" class="form-control" type="number" placeholder="e.g. 20">
+            <label class="mt-2">Jitter (ms)</label>
+            <input id="jitterIn" class="form-control" type="number" placeholder="e.g. 5">
+            <label class="mt-2">Packet Loss (%)</label>
+            <input id="lossIn" class="form-control" type="number" placeholder="e.g. 0.2">
+            <button class="btn btn-warning mt-3 w-100" onclick="analyzeQoS()">Analyze</button>
+            <div class="mt-2"><strong>Analysis:</strong> <span id="qosOut">-</span></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <h6>Realtime Mini</h6>
+            <p>Status: <span id="realtimeStatus">Initializing...</span></p>
+            <h6 class="mt-3">Active Alerts</h6>
+            <ul id="alerts" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONT Status -->
+    <div id="ont" class="view" style="display:none">
+      <h3>ONT Status</h3>
+      <div class="card p-3 shadow-sm mt-2">
+        <div class="d-flex mb-2">
+          <input id="filterSearch" class="form-control me-2" placeholder="Search by ID or customer">
+          <select id="filterStatus" class="form-select w-auto">
+            <option value="">All status</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+            <option value="degraded">Degraded</option>
+          </select>
+          <button class="btn btn-secondary ms-2" onclick="renderOntTable()">Filter</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="ontTable">
+            <thead><tr><th>ID</th><th>Customer</th><th>GPON</th><th>Latency</th><th>Jitter</th><th>Loss</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer Map -->
+    <div id="map" class="view" style="display:none">
+      <h3>Customer Map</h3>
+      <div class="card p-3 shadow-sm mt-2"><div id="map"></div></div>
+    </div>
+
+    <!-- Reports -->
+    <div id="reports" class="view" style="display:none">
+      <h3>Reports</h3>
+      <div class="card p-3 shadow-sm mt-2">
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="downloadReport('qos')">Download QoS Report (CSV)</button>
+          <button class="btn btn-outline-success" onclick="downloadReport('ont')">Download ONT Report (CSV)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div id="admin" class="view" style="display:none">
+      <h3>Admin</h3>
+      <div class="card p-3 shadow-sm mt-2">
+        <h6>Users</h6>
+        <div class="d-flex mb-2">
+          <input id="newUser" class="form-control me-2" placeholder="email or username">
+          <select id="newRole" class="form-select w-auto me-2"><option>admin</option><option>operator</option><option>viewer</option></select>
+          <button class="btn btn-primary" onclick="addUser()">Add User</button>
+        </div>
+        <ul id="userList" class="list-group"></ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" tabindex="-1" id="loginModal">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Admin Login (demo)</h5><button type="button" class="btn-close" onclick="closeLogin()"></button></div>
+        <div class="modal-body">
+          <input id="loginUser" class="form-control mb-2" placeholder="username">
+          <input id="loginPass" type="password" class="form-control" placeholder="password">
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="doLogin()">Login</button></div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// --- State (local demo) ---
+let oltDevices = JSON.parse(localStorage.getItem('oltDevices')||'[]');
+let users = JSON.parse(localStorage.getItem('ispUsers')||'[]');
+let ontData = JSON.parse(localStorage.getItem('ontData')||'null');
+if(!ontData){ // seed sample ONT data
+  ontData = [];
+  for(let i=1;i<=50;i++){
+    let st = Math.random()>0.85? 'offline': Math.random()>0.15? 'online':'degraded';
+    ontData.push({id:'ONT-'+(1000+i), customer:'Cust-'+i, gpon:'GPON-'+((i%8)+1), latency:(10+Math.random()*60).toFixed(1), jitter:(Math.random()*10).toFixed(1), loss:(Math.random()*2).toFixed(2), status:st, lat: -6.2 + Math.random()*0.2, lng:106.8 + Math.random()*0.2});
+  }
+  localStorage.setItem('ontData',JSON.stringify(ontData));
+}
+
+// --- Navigation ---
+function show(id){ document.querySelectorAll('.view').forEach(v=>v.style.display='none'); document.getElementById(id).style.display='block'; if(id==='map'){renderMap()} }
+show('overview');
+
+// --- Ratio ---
+function calcRatio(){ let ports=parseFloat(document.getElementById('inputOltPorts').value)||0; let onu=parseFloat(document.getElementById('inputOnuActive').value)||0; if(!ports) return alert('Masukkan OLT ports'); let r=(onu/ports).toFixed(2); document.getElementById('ratioOut').innerText = r + ' ONU per port'; }
+
+// --- OLT management ---
+function addOlt(){ let name=document.getElementById('newOltName').value.trim(); if(!name) return alert('Nama OLT kosong'); oltDevices.push({name:name, ports:64, assigned:Math.floor(Math.random()*40)}); localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); renderOltList(); renderOltTable(); document.getElementById('newOltName').value=''; }
+function renderOltList(){ let ul=document.getElementById('oltList'); ul.innerHTML=''; oltDevices.forEach((o,idx)=>{ let li=document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center'; li.innerHTML = `<div><strong>${o.name}</strong><div class="small-muted">Ports ${o.ports} • Assigned ${o.assigned}</div></div><div><button class="btn btn-sm btn-danger" onclick="removeOlt(${idx})"><i class='fa fa-trash'></i></button></div>`; ul.appendChild(li); }) }
+function removeOlt(i){ if(!confirm('Hapus OLT?')) return; oltDevices.splice(i,1); localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); renderOltList(); renderOltTable(); }
+function renderOltTable(){ let tbody=document.querySelector('#oltTable tbody'); tbody.innerHTML=''; oltDevices.forEach(o=>{ let tr=document.createElement('tr'); tr.innerHTML=`<td>${o.name}</td><td>${o.ports}</td><td>${o.assigned}</td><td><button class='btn btn-sm btn-outline-primary' onclick="alert('Open control for ${o.name} (simulated)')">Manage</button></td>`; tbody.appendChild(tr); }) }
+renderOltList(); renderOltTable();
+
+// --- QoS Analyzer + Chart ---
+let qosChart = new Chart(document.getElementById('qosChart'),{type:'line',data:{labels:[],datasets:[{label:'QoS Score',data:[],tension:0.4}]},options:{scales:{y:{min:0,max:100}}}});
+function analyzeQoS(){ let l=parseFloat(document.getElementById('latencyIn').value); let j=parseFloat(document.getElementById('jitterIn').value); let p=parseFloat(document.getElementById('lossIn').value); if(isNaN(l)||isNaN(j)||isNaN(p)) return alert('Isi semua parameter QoS'); let score = Math.max(0,100 - (l*0.25 + j*0.5 + p*5)); document.getElementById('qosOut').innerHTML = `<b>${score.toFixed(1)}</b> (${score>80?'Excellent':score>60?'Good':'Poor'})`; // push to chart
+  if(qosChart.data.labels.length>50){ qosChart.data.labels.shift(); qosChart.data.datasets[0].data.shift(); }
+  qosChart.data.labels.push(new Date().toLocaleTimeString()); qosChart.data.datasets[0].data.push(score.toFixed(1)); qosChart.update(); }
+
+// --- Realtime simulation (alerts, stats) ---
+setInterval(()=>{
+  // update stats
+  document.getElementById('stat_olt').innerText = oltDevices.length;
+  let activeOnu = ontData.filter(o=>o.status==='online').length;
+  document.getElementById('stat_onu').innerText = activeOnu;
+  let avgLat = (ontData.reduce((s,o)=>s+parseFloat(o.latency),0)/ontData.length).toFixed(1);
+  document.getElementById('stat_latency').innerText = avgLat + ' ms';
+  let avgQos = Math.max(0,(100 - avgLat*0.5)).toFixed(1);
+  document.getElementById('stat_qos').innerText = avgQos;
+  // mini realtime status
+  document.getElementById('realtimeStatus').innerText = Math.random()>0.05? 'Operational':'Partial outage';
+  // alerts
+  let alerts = document.getElementById('alerts'); alerts.innerHTML=''; if(Math.random()>0.9){ let it=document.createElement('li'); it.className='list-group-item list-group-item-danger'; it.innerText='Packet loss spike detected in zone 3'; alerts.appendChild(it);} },3000);
+
+// --- ONT table rendering + filter ---
+function renderOntTable(){ let tbody=document.querySelector('#ontTable tbody'); tbody.innerHTML=''; let q = document.getElementById('filterSearch').value.toLowerCase(); let st = document.getElementById('filterStatus').value; let filtered = ontData.filter(o=>{ if(st && o.status!==st) return false; if(q && !(o.id.toLowerCase().includes(q)||o.customer.toLowerCase().includes(q))) return false; return true; }); filtered.forEach(o=>{ let tr=document.createElement('tr'); tr.innerHTML = `<td>${o.id}</td><td>${o.customer}</td><td>${o.gpon}</td><td>${o.latency} ms</td><td>${o.jitter} ms</td><td>${o.loss} %</td><td><span class="badge bg-${o.status==='online'?'success':o.status==='offline'?'danger':'warning'}">${o.status}</span></td>`; tbody.appendChild(tr); }); }
+renderOntTable();
+
+// --- Map (Leaflet) ---
+let mapObj=null; function renderMap(){ if(mapObj) return; mapObj = L.map('map').setView([-6.2,106.8],11); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(mapObj); ontData.forEach(o=>{ let m=L.circleMarker([o.lat,o.lng],{radius:6}).addTo(mapObj); m.bindPopup(`${o.id}<br>${o.customer}<br>Status: ${o.status}`); }); }
+
+// --- Exports / Reports ---
+function exportCSV(arr, filename){ if(!arr||!arr.length) return alert('No data'); const keys = Object.keys(arr[0]); const csv = [keys.join(',')].concat(arr.map(r=>keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(','))).join('
+'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename||'report.csv'; a.click(); URL.revokeObjectURL(url); }
+function downloadReport(type){ if(type==='qos'){ // create sample qos entries
+    let data = []; for(let i=0;i<30;i++){ data.push({time:new Date(Date.now()-i*60000).toLocaleString(),latency:(10+Math.random()*40).toFixed(1),jitter:(Math.random()*10).toFixed(1),loss:(Math.random()*1).toFixed(2)}); } exportCSV(data,'qos_report.csv'); }
+  if(type==='ont'){ exportCSV(ontData,'ont_report.csv'); }}
+
+// --- Admin users ---
+function addUser(){ let u=document.getElementById('newUser').value.trim(); let r=document.getElementById('newRole').value; if(!u) return alert('Isi user'); users.push({user:u,role:r}); localStorage.setItem('ispUsers',JSON.stringify(users)); renderUsers(); document.getElementById('newUser').value=''; }
+function renderUsers(){ let ul=document.getElementById('userList'); ul.innerHTML=''; users.forEach((x,idx)=>{ let li=document.createElement('li'); li.className='list-group-item d-flex justify-content-between align-items-center'; li.innerHTML = `<div>${x.user}<div class="small-muted">${x.role}</div></div><div><button class='btn btn-sm btn-danger' onclick="users.splice(${idx},1);localStorage.setItem('ispUsers',JSON.stringify(users));renderUsers()">Remove</button></div>`; ul.appendChild(li); }); }
+renderUsers();
+
+// --- Login modal (demo) ---
+function openLogin(){ document.getElementById('loginModal').style.display='block'; }
+function closeLogin(){ document.getElementById('loginModal').style.display='none'; }
+function doLogin(){ let u=document.getElementById('loginUser').value; let p=document.getElementById('loginPass').value; if(u==='admin'&&p==='admin'){ alert('Login success (demo)'); closeLogin(); show('admin'); } else alert('Credentials demo: admin / admin'); }
+
+// --- Utilities ---
+function toggleDark(){ document.documentElement.classList.toggle('dark'); localStorage.setItem('dark', document.documentElement.classList.contains('dark')) }
+if(localStorage.getItem('dark')==='true'){ document.documentElement.classList.add('dark'); document.getElementById('darkToggle').checked=true }
+
+function exportSelected(){ /* placeholder for future */ }
+
+// --- download ONT CSV quick ---
+function downloadOntCSV(){ exportCSV(ontData,'ont_status.csv') }
+
+// --- small helpers for initial page
+(function init(){ // seed sample olt if none
+  if(oltDevices.length===0){ oltDevices=[{name:'OLT-1',ports:64,assigned:32},{name:'OLT-2',ports:64,assigned:18}]; localStorage.setItem('oltDevices',JSON.stringify(oltDevices)); }
+  renderOltList(); renderOltTable(); renderOntTable();
+  // push some QoS chart data
+  for(let i=10;i>=0;i--){ qosChart.data.labels.push(new Date(Date.now()-i*60000).toLocaleTimeString()); qosChart.data.datasets[0].data.push((70+Math.random()*20).toFixed(1)); }
+  qosChart.update();
+})();
+
+// Save ontData to global so export works
+window.ontData = ontData;
+
+</script>
+</body>
+</html>
