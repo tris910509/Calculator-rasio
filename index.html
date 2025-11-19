@@ -1,90 +1,468 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Ratio Calculator</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ISP Dashboard — Network, OLT & QoS Monitor</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{--sidebar-bg:#0d6efd;--sidebar-color:#fff}
+    body{background:#f4f6fb}
+    .sidebar{min-height:100vh;background:var(--sidebar-bg);color:var(--sidebar-color)}
+    .sidebar a{color:var(--sidebar-color);text-decoration:none}
+    .card-compact{border-radius:12px}
+    .small-muted{font-size:.85rem;color:#6c757d}
+    .progress-label{font-weight:600}
+    .nowrap{white-space:nowrap}
+    /* responsive tweaks */
+    @media (max-width:991px){.sidebar{position:relative;min-height:auto}}
+  </style>
 </head>
+<body>
 
-<body class="bg-light">
-
-    <div class="container py-5">
-        <div class="card shadow-lg p-4">
-            <h2 class="text-center mb-4">📶 Network Ratio Calculator</h2>
-
-            <div class="row g-3">
-
-                <!-- Bandwidth Total -->
-                <div class="col-md-6">
-                    <label class="form-label">Total Bandwidth (Mbps)</label>
-                    <input type="number" id="bandwidth" class="form-control" placeholder="contoh: 100">
-                </div>
-
-                <!-- Jumlah User -->
-                <div class="col-md-6">
-                    <label class="form-label">Jumlah User</label>
-                    <input type="number" id="users" class="form-control" placeholder="contoh: 50">
-                </div>
-
-                <!-- Bandwidth Ideal per User -->
-                <div class="col-md-6">
-                    <label class="form-label">Bandwidth Ideal per User (Mbps)</label>
-                    <input type="number" id="idealPerUser" class="form-control" placeholder="contoh: 5">
-                </div>
-
-                <!-- Bandwidth Terpakai -->
-                <div class="col-md-6">
-                    <label class="form-label">Bandwidth Terpakai (Mbps)</label>
-                    <input type="number" id="used" class="form-control" placeholder="contoh: 60">
-                </div>
-
-            </div>
-
-            <!-- Tombol -->
-            <div class="text-center mt-4">
-                <button class="btn btn-primary px-4" onclick="calculate()">Hitung Rasio</button>
-            </div>
-
-            <hr>
-
-            <!-- Output -->
-            <div id="result" class="mt-3"></div>
-
+<div class="container-fluid">
+  <div class="row">
+    <!-- SIDEBAR -->
+    <nav class="col-lg-2 sidebar p-3 d-flex flex-column gap-3">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center" style="width:44px;height:44px">ISP</div>
+        <div>
+          <div class="fw-bold">ISP Dashboard</div>
+          <div class="small-muted">Control & Monitoring</div>
         </div>
-    </div>
+      </div>
 
+      <div class="mt-2">
+        <a href="#overview" class="d-block mb-2"><i class="bi bi-speedometer2"></i> Overview</a>
+        <a href="#network" class="d-block mb-2"><i class="bi bi-wifi"></i> Network Ratio</a>
+        <a href="#olt" class="d-block mb-2"><i class="bi bi-hdd-network"></i> OLT Control</a>
+        <a href="#qos" class="d-block mb-2"><i class="bi bi-activity"></i> QoS Monitor</a>
+        <a href="#history" class="d-block mb-2"><i class="bi bi-clock-history"></i> History</a>
+      </div>
+
+      <div class="mt-auto small-muted">
+        Version 1.0 • Local Demo
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="col-lg-10 p-4">
+      <!-- TOP BAR -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="mb-0">Full ISP Dashboard</h3>
+          <div class="small-muted">Network ratio • OLT control • QoS mini-monitor</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" id="btnToggleMonitor"><i class="bi bi-play-fill"></i> Start Monitor</button>
+          <button class="btn btn-primary" id="btnSaveSnapshot"><i class="bi bi-cloud-upload"></i> Save Snapshot</button>
+        </div>
+      </div>
+
+      <!-- OVERVIEW CARDS -->
+      <section id="overview" class="mb-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="card card-compact p-3 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="small-muted">Total Bandwidth</div>
+                  <div class="h5" id="overviewBandwidth">100 Mbps</div>
+                </div>
+                <i class="bi bi-collection-play text-primary" style="font-size:28px"></i>
+              </div>
+              <div class="mt-2 small-muted">Users: <span id="overviewUsers">50</span> • ONU: <span id="overviewOnu">500</span></div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card card-compact p-3 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="small-muted">OLT Utilization</div>
+                  <div class="h5" id="overviewOltPct">62%</div>
+                </div>
+                <i class="bi bi-box-seam text-warning" style="font-size:28px"></i>
+              </div>
+              <div class="mt-2">
+                <div class="progress" style="height:10px">
+                  <div id="overviewOltBar" class="progress-bar" role="progressbar" style="width:62%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card card-compact p-3 shadow-sm">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="small-muted">QoS Overall</div>
+                  <div class="h5" id="overviewQoS">Baik</div>
+                </div>
+                <i class="bi bi-graph-up text-success" style="font-size:28px"></i>
+              </div>
+              <div class="mt-2 small-muted">Latency: <span id="overviewLat">30ms</span> • Loss: <span id="overviewLoss">0.5%</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NETWORK RATIO + OLT + QoS Panels -->
+      <div class="row g-4">
+        <!-- NETWORK RATIO -->
+        <div id="network" class="col-xl-4 col-lg-6">
+          <div class="card p-3 shadow-sm">
+            <h5>🔧 Network Ratio</h5>
+            <div class="row g-2 mt-2">
+              <div class="col-12">
+                <label class="form-label">Total Bandwidth (Mbps)</label>
+                <input id="bandwidth" class="form-control" type="number" value="100">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Users</label>
+                <input id="users" class="form-control" type="number" value="50">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Ideal per User (Mbps)</label>
+                <input id="idealPerUser" class="form-control" type="number" value="2">
+              </div>
+
+              <div class="col-12 text-end mt-2">
+                <button class="btn btn-sm btn-primary" id="btnCalcNetwork">Calculate</button>
+              </div>
+
+              <div class="col-12 mt-3">
+                <div id="networkResult"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OLT CONTROL -->
+        <div id="olt" class="col-xl-4 col-lg-6">
+          <div class="card p-3 shadow-sm">
+            <h5>🟦 OLT Control & Visualization</h5>
+            <div class="row g-2 mt-2">
+              <div class="col-6">
+                <label class="form-label">OLT Ports</label>
+                <input id="oltPorts" class="form-control" type="number" value="16">
+              </div>
+              <div class="col-6">
+                <label class="form-label">ONU per Port</label>
+                <select id="onuPerPort" class="form-select">
+                  <option value="64">64</option>
+                  <option value="128">128</option>
+                </select>
+              </div>
+
+              <div class="col-12 mt-2">
+                <label class="form-label">Total ONU Terpasang</label>
+                <input id="onuInstalled" class="form-control" type="number" value="500">
+              </div>
+
+              <div class="col-12 mt-3">
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" id="btnUpdateOlt">Update OLT</button>
+                  <button class="btn btn-sm btn-outline-warning" id="btnSimIncrease">Simulate +10 ONU</button>
+                </div>
+              </div>
+
+              <div class="col-12 mt-3">
+                <canvas id="oltPie" height="160"></canvas>
+              </div>
+
+              <div class="col-12 mt-2 small-muted">
+                <div class="d-flex justify-content-between">
+                  <div class="progress-label">Capacity</div>
+                  <div id="oltCapText">1024 ONU</div>
+                </div>
+                <div class="progress mt-2" style="height:12px">
+                  <div id="oltCapBar" class="progress-bar" role="progressbar" style="width:48%"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- QoS MONITOR -->
+        <div id="qos" class="col-xl-4 col-lg-12">
+          <div class="card p-3 shadow-sm">
+            <h5>📡 QoS Mini Monitor</h5>
+
+            <div class="row g-2 mt-2">
+              <div class="col-6">
+                <label class="form-label">Latency (ms)</label>
+                <input id="latency" class="form-control" type="number" value="30">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Jitter (ms)</label>
+                <input id="jitter" class="form-control" type="number" value="5">
+              </div>
+              <div class="col-6 mt-2">
+                <label class="form-label">Packet Loss (%)</label>
+                <input id="packetLoss" class="form-control" type="number" value="0.5" step="0.1">
+              </div>
+
+              <div class="col-12 mt-2 d-flex gap-2">
+                <button class="btn btn-sm btn-success" id="btnApplyQos">Apply</button>
+                <button class="btn btn-sm btn-outline-secondary" id="btnRandomQos">Randomize</button>
+              </div>
+
+              <div class="col-12 mt-3">
+                <canvas id="qosChart" height="140"></canvas>
+              </div>
+
+              <div class="col-12 mt-2 small-muted">Last update: <span id="qosLast">-</span></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- HISTORY -->
+      <section id="history" class="mt-4">
+        <div class="card p-3 shadow-sm">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">History & Export</h5>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" id="btnExportCsv">Export CSV</button>
+              <button class="btn btn-sm btn-outline-danger" id="btnClearHistory">Clear History</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm" id="historyTable">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Bandwidth</th>
+                  <th>Users</th>
+                  <th>OLT%</th>
+                  <th>Latency</th>
+                  <th>Jitter</th>
+                  <th>Loss</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
 <script>
-function calculate() {
-    let bandwidth = parseFloat(document.getElementById("bandwidth").value);
-    let users = parseInt(document.getElementById("users").value);
-    let ideal = parseFloat(document.getElementById("idealPerUser").value);
-    let used = parseFloat(document.getElementById("used").value);
+// ---- Utilities ----
+function by(id){return document.getElementById(id)}
+function nowIso(){return new Date().toLocaleString()}
 
-    if (!bandwidth || !users || !ideal || !used) {
-        document.getElementById("result").innerHTML =
-            `<div class="alert alert-danger">Mohon isi semua data dengan benar.</div>`;
-        return;
-    }
+// ---- State & Charts ----
+let monitoring = false;
+let monitorInterval = null;
+let qosChart = null;
+let oltPieChart = null;
+let qosData = {labels:[], latency:[], jitter:[], loss:[]};
 
-    // Perhitungan
-    let bwPerUser = bandwidth / users;
-    let totalIdeal = ideal * users;
-    let utilization = (used / bandwidth) * 100;
-    let ratio = bandwidth / totalIdeal;
+// initialize charts
+function initCharts(){
+  const qosCtx = by('qosChart').getContext('2d');
+  qosChart = new Chart(qosCtx, {
+    type: 'line',
+    data: {labels: qosData.labels, datasets: [
+      {label:'Latency (ms)', data:qosData.latency, tension:0.3, borderWidth:2, fill:false},
+      {label:'Jitter (ms)', data:qosData.jitter, tension:0.3, borderWidth:2, fill:false},
+      {label:'Packet Loss (%)', data:qosData.loss, tension:0.3, borderWidth:2, fill:false}
+    ]},
+    options:{responsive:true, plugins:{legend:{position:'bottom'}}}
+  });
 
-    document.getElementById("result").innerHTML = `
-        <div class="alert alert-info">
-            <h5>📊 Hasil Perhitungan:</h5>
-            <ul>
-                <li><b>Bandwidth per User:</b> ${bwPerUser.toFixed(2)} Mbps</li>
-                <li><b>Kebutuhan Ideal Total:</b> ${totalIdeal.toFixed(2)} Mbps</li>
-                <li><b>Utilisasi Jaringan:</b> ${utilization.toFixed(2)}%</li>
-                <li><b>Rasio Bandwidth Real : Ideal:</b> ${ratio.toFixed(2)} : 1</li>
-            </ul>
-        </div>
-    `;
+  const pieCtx = by('oltPie').getContext('2d');
+  oltPieChart = new Chart(pieCtx, {
+    type:'doughnut',
+    data:{labels:['Used ONU','Free ONU'], datasets:[{data:[500,524]}]},
+    options:{cutout:'60%', plugins:{legend:{position:'bottom'}}}
+  });
 }
+
+// ---- Network Calc ----
+function calcNetwork(){
+  const bw = parseFloat(by('bandwidth').value)||0;
+  const users = parseInt(by('users').value)||0;
+  const ideal = parseFloat(by('idealPerUser').value)||1;
+  if(!bw||!users){ by('networkResult').innerHTML = '<div class="small-muted">Please provide bandwidth and users.</div>'; return; }
+  const bwPerUser = bw/users;
+  const totalIdeal = ideal*users;
+  const util = (bw / totalIdeal)*100;
+  by('networkResult').innerHTML = `\
+    <div class="small-muted">BW/user: <b>${bwPerUser.toFixed(2)} Mbps</b></div>\
+    <div class="small-muted">Total ideal: <b>${totalIdeal.toFixed(2)} Mbps</b></div>\
+    <div class="small-muted">Utilization vs ideal: <b>${util.toFixed(1)}%</b></div>`;
+  // update overview
+  by('overviewBandwidth').innerText = bw + ' Mbps';
+  by('overviewUsers').innerText = users;
+}
+
+// ---- OLT ----
+function updateOlt(){
+  const ports = parseInt(by('oltPorts').value)||0;
+  const per = parseInt(by('onuPerPort').value)||64;
+  const installed = parseInt(by('onuInstalled').value)||0;
+  const cap = ports * per;
+  const used = installed;
+  const pct = cap? (used / cap)*100 : 0;
+  oltPieChart.data.datasets[0].data = [used, Math.max(0, cap-used)];
+  oltPieChart.update();
+  const pctClamped = Math.min(100, pct);
+  by('oltCapText').innerText = cap + ' ONU';
+  by('oltCapBar').style.width = pctClamped + '%';
+  by('overviewOltPct').innerText = Math.round(pctClamped) + '%';
+  by('overviewOltBar').style.width = pctClamped + '%';
+}
+
+// simulate increase
+function simIncreaseOnu(n=10){
+  by('onuInstalled').value = (parseInt(by('onuInstalled').value)||0) + n;
+  updateOlt();
+}
+
+// ---- QoS ----
+function applyQosInputs(){
+  const lat = parseFloat(by('latency').value)||0;
+  const j = parseFloat(by('jitter').value)||0;
+  const loss = parseFloat(by('packetLoss').value)||0;
+  pushQosSample(lat,j,loss);
+}
+
+function pushQosSample(lat,j,loss){
+  const label = new Date().toLocaleTimeString();
+  qosData.labels.push(label);
+  qosData.latency.push(lat);
+  qosData.jitter.push(j);
+  qosData.loss.push(loss);
+  // keep last 20
+  if(qosData.labels.length>20){ qosData.labels.shift(); qosData.latency.shift(); qosData.jitter.shift(); qosData.loss.shift(); }
+  qosChart.update();
+  by('qosLast').innerText = nowIso();
+  // update overview
+  by('overviewLat').innerText = lat + 'ms';
+  by('overviewLoss').innerText = loss + '%';
+  // compute simple overall QoS label
+  const qosLabel = computeQoSLabel(lat,j,loss);
+  by('overviewQoS').innerText = qosLabel;
+}
+
+function computeQoSLabel(lat,j,loss){
+  let score = 0;
+  // latency scoring
+  if(lat<=150) score+=4; else if(lat<=300) score+=3; else if(lat<=450) score+=2; else score+=1;
+  if(j<=20) score+=4; else if(j<=50) score+=3; else score+=2;
+  if(loss<=1) score+=4; else if(loss<=2.5) score+=3; else if(loss<=5) score+=2; else score+=1;
+  const avg = score/3;
+  if(avg>=3.5) return 'Sangat Baik';
+  if(avg>=2.5) return 'Baik';
+  if(avg>=1.5) return 'Buruk';
+  return 'Sangat Buruk';
+}
+
+// ---- Monitoring ----
+function startMonitoring(){
+  if(monitoring) return;
+  monitoring = true; by('btnToggleMonitor').innerHTML = '<i class="bi bi-stop-fill"></i> Stop Monitor';
+  monitorInterval = setInterval(()=>{
+    // generate small random variations around input fields
+    const baseLat = parseFloat(by('latency').value)||30;
+    const baseJ = parseFloat(by('jitter').value)||5;
+    const baseLoss = parseFloat(by('packetLoss').value)||0.5;
+    const lat = Math.max(1, +(baseLat + (Math.random()-0.5)*10).toFixed(1));
+    const j = Math.max(0, +(baseJ + (Math.random()-0.5)*4).toFixed(1));
+    const loss = Math.max(0, +(baseLoss + (Math.random()-0.5)*1).toFixed(2));
+    pushQosSample(lat,j,loss);
+    // occasionally update overview with random bandwidth usage
+    const bw = parseFloat(by('bandwidth').value)||100;
+    const users = parseInt(by('users').value)||50;
+    by('overviewBandwidth').innerText = bw + ' Mbps';
+    by('overviewUsers').innerText = users;
+  }, 2500);
+}
+
+function stopMonitoring(){
+  monitoring=false; clearInterval(monitorInterval); monitorInterval=null; by('btnToggleMonitor').innerHTML = '<i class="bi bi-play-fill"></i> Start Monitor';
+}
+
+// ---- History Save & Export ----
+function saveSnapshot(){
+  const entry = {
+    time: nowIso(),
+    bandwidth: by('bandwidth').value,
+    users: by('users').value,
+    oltPct: by('overviewOltPct').innerText,
+    latency: (qosData.latency.slice(-1)[0]||by('latency').value),
+    jitter: (qosData.jitter.slice(-1)[0]||by('jitter').value),
+    loss: (qosData.loss.slice(-1)[0]||by('packetLoss').value)
+  };
+  const hist = JSON.parse(localStorage.getItem('isp_hist')||'[]');
+  hist.unshift(entry);
+  localStorage.setItem('isp_hist', JSON.stringify(hist));
+  renderHistory();
+}
+
+function renderHistory(){
+  const hist = JSON.parse(localStorage.getItem('isp_hist')||'[]');
+  const tbody = document.querySelector('#historyTable tbody');
+  tbody.innerHTML='';
+  hist.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.time}</td><td>${r.bandwidth}</td><td>${r.users}</td><td>${r.oltPct}</td><td>${r.latency}</td><td>${r.jitter}</td><td>${r.loss}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportCsv(){
+  const hist = JSON.parse(localStorage.getItem('isp_hist')||'[]');
+  if(!hist.length){ alert('No history to export'); return; }
+  const header = ['Time','Bandwidth','Users','OLT%','Latency','Jitter','Loss'];
+  const rows = hist.map(r=>[r.time,r.bandwidth,r.users,r.oltPct,r.latency,r.jitter,r.loss]);
+  const csv = [header].concat(rows).map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='isp_history.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function clearHistory(){ if(confirm('Clear history?')){ localStorage.removeItem('isp_hist'); renderHistory(); }}
+
+// ---- Events ----
+document.addEventListener('DOMContentLoaded', ()=>{
+  initCharts(); renderHistory(); updateOlt();
+  // buttons
+  by('btnCalcNetwork').addEventListener('click', calcNetwork);
+  by('btnUpdateOlt').addEventListener('click', updateOlt);
+  by('btnSimIncrease').addEventListener('click', ()=>simIncreaseOnu(10));
+  by('btnApplyQos').addEventListener('click', applyQosInputs);
+  by('btnRandomQos').addEventListener('click', ()=>{
+    by('latency').value = Math.round(10 + Math.random()*300);
+    by('jitter').value = Math.round(Math.random()*80);
+    by('packetLoss').value = +(Math.random()*6).toFixed(2);
+    applyQosInputs();
+  });
+  by('btnToggleMonitor').addEventListener('click', ()=>{ monitoring? stopMonitoring(): startMonitoring(); });
+  by('btnSaveSnapshot').addEventListener('click', saveSnapshot);
+  by('btnExportCsv').addEventListener('click', exportCsv);
+  by('btnClearHistory').addEventListener('click', clearHistory);
+  // initial sample
+  pushQosSample(parseFloat(by('latency').value), parseFloat(by('jitter').value), parseFloat(by('packetLoss').value));
+});
+
 </script>
 
 </body>
